@@ -15,8 +15,12 @@ pub fn run() {
     tx.add_output(100_000_000, b"SOMETHING".to_vec());
     println!("{:?}", tx);
     
+    println!("Bytes = {}", hex::encode(tx.bytes()));
+    
     // Save tx hash
     let tx_hash = tx.hash();
+    
+    println!("Hash = {}", hex::encode(tx_hash));
 
     let mut block = Block::new(None, 4);
     block.add_tx(Box::new(tx));
