@@ -5,6 +5,7 @@ mod transaction;
 mod block;
 mod variable_integer;
 mod merkle_tree;
+mod script;
 
 use std::time::SystemTime;
 

@@ -7,19 +7,19 @@ use crate::variable_integer::VariableInteger;
 /// A transaction is represented here
 /// See https://en.bitcoin.it/wiki/Transactions
 // FIXME Support flag and witnesses
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Transaction {
     version: u32,
-    inputs: Vec<Box<TxInput>>,
-    outputs: Vec<Box<TxOutput>>,
+    pub inputs: Vec<Box<TxInput>>,
+    pub outputs: Vec<Box<TxOutput>>,
     lock_time: u32
 }
 
-#[derive(Debug)]
-struct TxInput {
+#[derive(Debug, Clone)]
+pub struct TxInput {
     tx: Hash32,
     index: u32,
-    script_sig: Vec<u8>,
+    pub script_sig: Vec<u8>,
     sequence: u32,
 }
 
@@ -39,8 +39,8 @@ impl TxInput {
     }
 }
 
-#[derive(Debug)]
-struct TxOutput {
+#[derive(Debug, Clone)]
+pub struct TxOutput {
     value: u64,
     script_pub_key: Vec<u8>
 }
