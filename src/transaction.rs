@@ -19,7 +19,7 @@ pub struct Transaction {
 pub struct TxInput {
     tx: Hash32,
     index: u32,
-    pub script_sig: Vec<u8>,
+    pub script_sig: Vec<u8>, // Must be accessible by mod script
     sequence: u32,
 }
 
@@ -36,6 +36,10 @@ impl TxInput {
         bytes.extend_from_slice(&self.script_sig.as_slice());
         bytes.extend_from_slice(&self.sequence.to_le_bytes());
         bytes
+    }
+
+    pub fn sig(&self) -> Vec<u8> {
+        self.script_sig.clone()
     }
 }
 
@@ -55,6 +59,10 @@ impl TxOutput {
         
         bytes.extend_from_slice(self.script_pub_key.as_slice());
         bytes
+    }
+
+    pub fn pubkey(&self) -> Vec<u8> {
+        self.script_pub_key.clone()
     }
 }
 
