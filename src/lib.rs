@@ -6,6 +6,8 @@ mod block;
 mod variable_integer;
 mod merkle_tree;
 mod script;
+mod network;
+mod message;
 
 use std::time::SystemTime;
 
