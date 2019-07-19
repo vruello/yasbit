@@ -25,6 +25,20 @@ pub fn hash20(data: &[u8]) -> Hash20 {
     array
 }
 
+pub fn to_hash32(data: &[u8]) -> Result<Hash32, String> {
+    if data.len() != 32 {
+        return Err("Invalid length".to_string());
+    }
+
+    let mut hash = [0 as u8; 32];
+    for (i, c) in data.iter().enumerate() {
+        hash[i] = *c;
+    }
+
+    Ok(hash)
+}
+    
+
 pub trait Hashable {
     fn hash(&self) -> Hash32;
 }
@@ -143,5 +157,24 @@ mod tests {
                                   f07656133cf").unwrap();
         let hash = sha256("BABAR".as_bytes());
         assert!(check_signature(&pub_key_str, &sig_str, hash).unwrap());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_to_hash32_panic() {
+        let data: [u8;1] = [0];
+        let hash = to_hash32(&data).unwrap();
+    }
+
+    #[test]
+    fn test_to_hash32() {
+        let data = hex::decode(
+            "d39f608a7775b537729884d4e6633bb2105e55a16a14d31b0000000000000000"
+            ).unwrap();
+
+        let hash = to_hash32(&data.as_slice()).unwrap();
+
+        assert_eq!(hash.len(), 32);
+        assert_eq!(hash, data.as_slice());
     }
 }

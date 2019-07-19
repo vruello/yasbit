@@ -2,6 +2,8 @@ use crate::network;
 use crate::crypto;
 
 pub mod version;
+pub mod getaddr;
+pub mod getblocks;
 
 const MAGIC_MAIN: u32 = 0xD9B4BEF9;
 const MAGIC_TESTNET: u32 = 0xDAB5BFFA;
