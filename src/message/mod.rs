@@ -18,6 +18,12 @@ pub const NODE_BLOOM: u64 = 4;
 pub const NODE_WITNESS: u64 = 8;
 pub const NODE_NETWORK_LIMITED: u64 = 1024;
 
+#[derive(Debug)]
+enum MessageType {
+    Version(Message<version::MessageVersion>),
+    Alert(Message<alert::MessageAlert>),
+}
+
 pub trait MessageCommand {
     fn bytes(&self) -> Vec<u8>;
     fn from_bytes(_: &[u8]) -> Self;
@@ -25,6 +31,7 @@ pub trait MessageCommand {
     fn name(&self) -> [u8; 12];
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Message<T: MessageCommand> {
     magic: u32, // Magic value indicating message origin network, and used to
     // seek to next message when stream state is unknown
@@ -63,16 +70,27 @@ where
     }
 }
 
-fn validate(bytes: &[u8]) -> bool {
+fn parse(bytes: &[u8]) -> Result<MessageType, &str> {
     let mut index = 0;
     let magic = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 4)]));
     index += 4;
-    let name = std::str::from_utf8(&bytes[index..(index + 12)])
+
+    // Check magic
+    if !(magic == MAGIC_MAIN || magic == MAGIC_TESTNET) {
+        return Err("Invalid magicbytes");
+    }
+
+    let mut first_zero = 0;
+    for i in 0..12 {
+        if bytes[index + i] == 0 {
+            first_zero = i;
+            break;
+        }
+    }
+    let name = std::str::from_utf8(&bytes[index..(index + first_zero)])
         .unwrap()
         .to_owned();
     index += 12;
-
-    // TODO Check name
 
     let length = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 4)]));
     index += 4;
@@ -82,7 +100,23 @@ fn validate(bytes: &[u8]) -> bool {
 
     let payload = &bytes[index..(index + length as usize)];
 
-    &crypto::hash32(payload)[0..4] == checksum
+    // Check checksum
+    if &crypto::hash32(payload)[0..4] != checksum {
+        return Err("Invalid checksum");
+    }
+
+    let message;
+    if name == "version" {
+        let command = version::MessageVersion::from_bytes(&payload);
+        message = MessageType::Version(Message { magic, command });
+    } else if name == "alert" {
+        let command = alert::MessageAlert::from_bytes(&payload);
+        message = MessageType::Alert(Message { magic, command });
+    } else {
+        return Err("Unknown message");
+    }
+
+    Ok(message)
 }
 
 #[cfg(test)]
@@ -126,7 +160,7 @@ mod tests {
     }
 
     #[test]
-    fn test_message() {
+    fn test_version_message() {
         let name = [
             'v' as u8, 'e' as u8, 'r' as u8, 's' as u8, 'i' as u8, 'o' as u8, 'n' as u8, 0, 0, 0,
             0, 0,
@@ -144,7 +178,7 @@ mod tests {
 
         let message = Message::new(MAGIC_MAIN, mock);
 
-        assert_eq!(message.magic, 0xd9b4bef9);
+        assert_eq!(message.magic, MAGIC_MAIN);
         assert_eq!(
             "f9beb4d976657273696f6e000000000064000000358d493262ea0000010000000\
              000000011b2d05000000000010000000000000000000000000000000000ffff000\
@@ -152,6 +186,26 @@ mod tests {
              35d8ce617650f2f5361746f7368693a302e372e322fc03e0300",
             hex::encode(message.bytes())
         );
-        assert!(validate(&message.bytes()));
+
+        let bytes = message.bytes();
+        let parsed_message = parse(&bytes).unwrap();
+
+        if let MessageType::Version(version) = parsed_message {
+            assert_eq!(bytes, version.bytes());
+        }
+
+        let mut inv_checksum_bytes = bytes.clone();
+        inv_checksum_bytes[35] = inv_checksum_bytes[35] + 1;
+        match parse(&inv_checksum_bytes) {
+            Err(mess) => assert_eq!(mess, "Invalid checksum"),
+            _ => assert!(false),
+        }
+
+        let mut inv_magic_bytes = bytes.clone();
+        inv_magic_bytes[0] = inv_magic_bytes[0] + 1;
+        match parse(&inv_magic_bytes) {
+            Err(mess) => assert_eq!(mess, "Invalid magicbytes"),
+            _ => assert!(false),
+        }
     }
 }
