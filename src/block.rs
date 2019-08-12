@@ -1,6 +1,6 @@
 use crate::crypto::{hash32, Hash32, Hashable};
-use crate::transaction::Transaction;
 use crate::merkle_tree;
+use crate::transaction::Transaction;
 
 /// A block is represented here
 /// See https://en.bitcoin.it/wiki/Block
@@ -8,46 +8,47 @@ use crate::merkle_tree;
 pub struct Block {
     magic_no: u32, // should always be 0xD9B4BEF9
     header: BlockHeader,
-    transactions: Vec<Box<Transaction>>
+    transactions: Vec<Box<Transaction>>,
 }
 
 /// A block header is represented here
 /// See https://en.bitcoin.it/wiki/Block_hashing_algorithm
 #[derive(Debug)]
 struct BlockHeader {
-    version: u32, // block version number
-    hash_prev_block: Hash32, // hash of previous block header
+    version: u32,             // block version number
+    hash_prev_block: Hash32,  // hash of previous block header
     hash_merkle_root: Hash32, // hash based on all transactions in the block
-    time: u32, // block timestamp
-    bits: u32, // current target, must be represented in 32 bits
-    nonce: u32 // initialized to 0
+    time: u32,                // block timestamp
+    bits: u32,                // current target, must be represented in 32 bits
+    nonce: u32,               // initialized to 0
 }
 
 impl Block {
-
-    pub fn new(version: u32, 
-               hash_prev_block: Hash32, 
-               time: u32, 
-               nonce: u32, 
-               bits: u32, 
-               first_tx: Box<Transaction>) -> Self {
+    pub fn new(
+        version: u32,
+        hash_prev_block: Hash32,
+        time: u32,
+        nonce: u32,
+        bits: u32,
+        first_tx: Box<Transaction>,
+    ) -> Self {
         let block_header = BlockHeader {
-           version,
-           hash_prev_block,
-           hash_merkle_root: [0; 32], // Updated with block.update_merkle_root()
-           time,
-           bits,
-           nonce,
+            version,
+            hash_prev_block,
+            hash_merkle_root: [0; 32], // Updated with block.update_merkle_root()
+            time,
+            bits,
+            nonce,
         };
-        
+
         let mut block = Block {
             magic_no: 0xD9B4BEF9,
             header: block_header,
-            transactions: vec![first_tx]
+            transactions: vec![first_tx],
         };
 
         block.update_merkle_root();
-        
+
         block
     }
 
@@ -86,14 +87,14 @@ impl Block {
 
     /// Returns a boolean whether the block is valid or not.
     pub fn is_valid(&self) -> bool {
-        // TODO 
+        // TODO
         false
     }
 
     /// Try to find a valid nonce for the block.
     fn mine(&mut self) -> u32 {
         for x in 0..u32::max_value() {
-            self.header.nonce = x; 
+            self.header.nonce = x;
             if self.is_valid() {
                 return x;
             }
@@ -115,9 +116,9 @@ impl Hashable for Block {
 mod tests {
 
     use super::*;
-    
+
     #[test]
-    /// The test is based on 
+    /// The test is based on
     /// https://www.blockchain.com/fr/btc/block/000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
     fn genesis_block() {
         let mut tx = Transaction::new();
@@ -133,24 +134,31 @@ mod tests {
 
         let block = Block::new(
             1,
-            [0; 32], // prev block
+            [0; 32],    // prev block
             1231006505, // time
             2083236893, // nonce
-            486604799, // bits 
-            Box::new(tx)
+            486604799,  // bits
+            Box::new(tx),
         );
-        
-        assert_eq!("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
-                   hex::encode(block.hash()));
+
+        assert_eq!(
+            "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+            hex::encode(block.hash())
+        );
     }
-    
+
     #[test]
     /// This test is based on
     /// https://bitcoin.stackexchange.com/questions/67791/calculate-hash-of-block-header
     fn block_502871() {
         // We must build manually the hash (type Hash32)
         let mut prev_hash = [0; 32];
-        for (i, byte) in hex::decode("00000000000000000061abcd4f51d81ddba5498cff67fed44b287de0990b7266").unwrap().iter().enumerate() {
+        for (i, byte) in
+            hex::decode("00000000000000000061abcd4f51d81ddba5498cff67fed44b287de0990b7266")
+                .unwrap()
+                .iter()
+                .enumerate()
+        {
             prev_hash[i] = *byte;
         }
 
@@ -161,16 +169,24 @@ mod tests {
             1515252561,
             45291998,
             0x180091c1,
-            Box::new(Transaction::new()));
-        
+            Box::new(Transaction::new()),
+        );
+
         let mut merkle_root = [0; 32];
-        for (i, byte) in hex::decode("871148c57dad60c0cde483233b099daa3e6492a91c13b337a5413a4c4f842978").unwrap().iter().enumerate() {
+        for (i, byte) in
+            hex::decode("871148c57dad60c0cde483233b099daa3e6492a91c13b337a5413a4c4f842978")
+                .unwrap()
+                .iter()
+                .enumerate()
+        {
             merkle_root[i] = *byte;
         }
 
         block.header.hash_merkle_root = merkle_root;
 
-        assert_eq!("00000000000000000020cf2bdc6563fb25c424af588d5fb7223461e72715e4a9",
-                   hex::encode(block.hash()));
+        assert_eq!(
+            "00000000000000000020cf2bdc6563fb25c424af588d5fb7223461e72715e4a9",
+            hex::encode(block.hash())
+        );
     }
 }

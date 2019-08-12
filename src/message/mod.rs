@@ -1,14 +1,16 @@
-use crate::network;
 use crate::crypto;
+use crate::network;
+use crate::utils;
 
-pub mod version;
+pub mod alert;
 pub mod getaddr;
 pub mod getblocks;
+pub mod version;
 
-const MAGIC_MAIN: u32 = 0xD9B4BEF9;
-const MAGIC_TESTNET: u32 = 0xDAB5BFFA;
-const MAGIC_TESTNET3: u32 = 0x0709110B;
-const MAGIC_NAMECOIN: u32 = 0xFEB4BEF9;
+pub const MAGIC_MAIN: u32 = 0xD9B4BEF9;
+pub const MAGIC_TESTNET: u32 = 0xDAB5BFFA;
+pub const MAGIC_TESTNET3: u32 = 0x0709110B;
+pub const MAGIC_NAMECOIN: u32 = 0xFEB4BEF9;
 
 pub const NODE_NETWORK: u64 = 1;
 pub const NODE_GETUTXO: u64 = 2;
@@ -18,25 +20,26 @@ pub const NODE_NETWORK_LIMITED: u64 = 1024;
 
 pub trait MessageCommand {
     fn bytes(&self) -> Vec<u8>;
+    fn from_bytes(_: &[u8]) -> Self;
     fn length(&self) -> u32;
     fn name(&self) -> [u8; 12];
 }
 
 pub struct Message<T: MessageCommand> {
     magic: u32, // Magic value indicating message origin network, and used to
-                // seek to next message when stream state is unknown
-    command: T
+    // seek to next message when stream state is unknown
+    command: T,
 }
 
-impl<T> Message<T> where T: MessageCommand {
-    fn new(magic: u32, command: T) -> Self {
-        Message {
-            magic,
-            command
-        }
+impl<T> Message<T>
+where
+    T: MessageCommand,
+{
+    pub fn new(magic: u32, command: T) -> Self {
+        Message { magic, command }
     }
 
-    fn bytes(&self) -> Vec<u8> {
+    pub fn bytes(&self) -> Vec<u8> {
         let command_bytes = self.command.bytes();
         let checksum = &crypto::hash32(&command_bytes.as_slice())[0..4];
         let command_length = self.command.length();
@@ -60,6 +63,28 @@ impl<T> Message<T> where T: MessageCommand {
     }
 }
 
+fn validate(bytes: &[u8]) -> bool {
+    let mut index = 0;
+    let magic = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 4)]));
+    index += 4;
+    let name = std::str::from_utf8(&bytes[index..(index + 12)])
+        .unwrap()
+        .to_owned();
+    index += 12;
+
+    // TODO Check name
+
+    let length = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 4)]));
+    index += 4;
+
+    let checksum = &bytes[index..(index + 4)];
+    index += 4;
+
+    let payload = &bytes[index..(index + length as usize)];
+
+    &crypto::hash32(payload)[0..4] == checksum
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -67,7 +92,7 @@ mod tests {
 
     struct MessageMock {
         name: [u8; 12],
-        payload: Vec<u8>
+        payload: Vec<u8>,
     }
 
     impl MessageCommand for MessageMock {
@@ -82,21 +107,30 @@ mod tests {
         fn bytes(&self) -> Vec<u8> {
             self.payload.clone()
         }
+
+        fn from_bytes(bytes: &[u8]) -> Self {
+            let name = [
+                'm' as u8, 'o' as u8, 'c' as u8, 'k' as u8, 0, 0, 0, 0, 0, 0, 0, 0,
+            ];
+            MessageMock {
+                name,
+                payload: bytes.to_vec(),
+            }
+        }
     }
 
     impl MessageMock {
         fn new(name: [u8; 12], payload: Vec<u8>) -> Self {
-            MessageMock {
-                name,
-                payload
-            }
+            MessageMock { name, payload }
         }
     }
 
     #[test]
     fn test_message() {
-        let name = ['v' as u8, 'e' as u8, 'r' as u8, 's' as u8,
-                   'i' as u8, 'o' as u8, 'n' as u8, 0, 0, 0, 0, 0];
+        let name = [
+            'v' as u8, 'e' as u8, 'r' as u8, 's' as u8, 'i' as u8, 'o' as u8, 'n' as u8, 0, 0, 0,
+            0, 0,
+        ];
         let payload_hex = "62ea0000010000000000000011b2d0500000000001000000000\
                            0000000000000000000000000ffff0000000000000000000000\
                            00000000000000000000000000ffff0000000000003b2eb35d8\
@@ -108,16 +142,16 @@ mod tests {
         assert_eq!(mock.length(), 100);
         assert_eq!(payload_hex, hex::encode(mock.bytes()));
 
-
         let message = Message::new(MAGIC_MAIN, mock);
 
         assert_eq!(message.magic, 0xd9b4bef9);
         assert_eq!(
             "f9beb4d976657273696f6e000000000064000000358d493262ea0000010000000\
-            000000011b2d05000000000010000000000000000000000000000000000ffff000\
-            000000000000000000000000000000000000000000000ffff0000000000003b2eb\
-            35d8ce617650f2f5361746f7368693a302e372e322fc03e0300",
-            hex::encode(message.bytes()));
-
+             000000011b2d05000000000010000000000000000000000000000000000ffff000\
+             000000000000000000000000000000000000000000000ffff0000000000003b2eb\
+             35d8ce617650f2f5361746f7368693a302e372e322fc03e0300",
+            hex::encode(message.bytes())
+        );
+        assert!(validate(&message.bytes()));
     }
 }

@@ -1,4 +1,3 @@
-
 use std::collections::HashMap;
 
 use crate::crypto;
@@ -8,7 +7,7 @@ use crate::transaction::{Transaction, TxOutput};
 #[derive(Debug, Clone)]
 pub enum StackEntry {
     Array(Vec<u8>),
-    Bool(bool)
+    Bool(bool),
 }
 
 pub struct Script {
@@ -25,7 +24,7 @@ pub struct Script {
 
 pub struct ScriptResult {
     stack: Vec<StackEntry>,
-    invalid: bool
+    invalid: bool,
 }
 
 impl Script {
@@ -51,7 +50,7 @@ impl Script {
             self.stack.push(StackEntry::Array(h.to_vec()));
         } else {
             panic!("Invalid stack");
-        } 
+        }
     }
 
     fn op_equal(&mut self) {
@@ -59,10 +58,14 @@ impl Script {
         let x1 = self.stack.pop().unwrap();
         let x2 = self.stack.pop().unwrap();
 
-        let to_add = match(x1, x2) {
-            (StackEntry::Array(ref val1), StackEntry::Array(ref val2)) if val1 == val2 => StackEntry::Bool(true),
-            (StackEntry::Bool(val1), StackEntry::Bool(val2)) if val1 == val2 => StackEntry::Bool(true),
-            _ => StackEntry::Bool(false)
+        let to_add = match (x1, x2) {
+            (StackEntry::Array(ref val1), StackEntry::Array(ref val2)) if val1 == val2 => {
+                StackEntry::Bool(true)
+            }
+            (StackEntry::Bool(val1), StackEntry::Bool(val2)) if val1 == val2 => {
+                StackEntry::Bool(true)
+            }
+            _ => StackEntry::Bool(false),
         };
 
         self.stack.push(to_add);
@@ -75,7 +78,7 @@ impl Script {
         self.transaction_invalid = match val {
             StackEntry::Array(ref vect) if vect.is_empty() => true,
             StackEntry::Bool(false) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -93,7 +96,7 @@ impl Script {
                 // Step 2
                 // FIXME we assume that there is no OP_CODESEPARATOR for now
                 let sub_script = self.txout_pkscript.clone();
-                
+
                 // FIXME Step 3/4
 
                 // Step 5
@@ -118,16 +121,19 @@ impl Script {
 
                 // Step 10
                 let to_push = match crypto::check_signature(
-                    &pub_key_str, &sig_str, crypto::hash32(&bytes)) {
+                    &pub_key_str,
+                    &sig_str,
+                    &crypto::hash32(&bytes),
+                ) {
                     Ok(true) => StackEntry::Bool(true),
-                    _ => StackEntry::Bool(false)
+                    _ => StackEntry::Bool(false),
                 };
                 self.stack.push(to_push);
             }
         }
 
         self.pc += 1;
-    } 
+    }
 
     fn exec_next_instruction(&mut self) {
         let opcode = self.code[self.pc];
@@ -156,9 +162,7 @@ impl Script {
     pub fn new(tx_new: Box<Transaction>, input_index: usize, tx_prev_out: Box<TxOutput>) -> Self {
         let script_sig = (*(*tx_new).inputs[input_index]).sig();
         let pk_script = (*tx_prev_out).pubkey();
-        let mut code = Vec::with_capacity(
-            script_sig.len() +
-            pk_script.len());
+        let mut code = Vec::with_capacity(script_sig.len() + pk_script.len());
         code.extend_from_slice(script_sig.as_slice());
         code.extend_from_slice(pk_script.as_slice());
 
@@ -190,11 +194,10 @@ impl Script {
 
         ScriptResult {
             stack: self.stack.clone(),
-            invalid: self.transaction_invalid
+            invalid: self.transaction_invalid,
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -216,7 +219,11 @@ mod tests {
     #[test]
     fn test_script_struct() {
         let mut tx_new = Transaction::new();
-        tx_new.add_input([0 as u8; 32], 0xffffffff, hex::decode("1234567890").unwrap());
+        tx_new.add_input(
+            [0 as u8; 32],
+            0xffffffff,
+            hex::decode("1234567890").unwrap(),
+        );
         let input_index = 0;
         let tx_new_box = Box::new(tx_new);
 
@@ -294,7 +301,10 @@ mod tests {
         assert!(!result.invalid);
         assert_eq!(result.stack.len(), 1);
         if let StackEntry::Array(vect) = &result.stack[0] {
-            assert_eq!(vect, &hex::decode("7bf35740091d766c45e3c052aa173fa4af80027d").unwrap());
+            assert_eq!(
+                vect,
+                &hex::decode("7bf35740091d766c45e3c052aa173fa4af80027d").unwrap()
+            );
         } else {
             panic!();
         }
@@ -326,7 +336,7 @@ mod tests {
         } else {
             panic!();
         }
-        // Test with booleans from equal 
+        // Test with booleans from equal
         let code = hex::decode("0101010187010101018787").unwrap();
         let (tx_new, input_index, tx_prev_out) = get_script_parameters(code);
         let mut script = Script::new(tx_new, input_index, tx_prev_out);
@@ -338,7 +348,7 @@ mod tests {
         } else {
             panic!();
         }
-        // Test with booleans from equal 
+        // Test with booleans from equal
         let code = hex::decode("0102010187010101018787").unwrap();
         let (tx_new, input_index, tx_prev_out) = get_script_parameters(code);
         let mut script = Script::new(tx_new, input_index, tx_prev_out);
@@ -360,7 +370,7 @@ mod tests {
         let result = script.exec();
         assert!(result.invalid);
         assert!(result.stack.is_empty());
-        
+
         let code = hex::decode("010101018769").unwrap();
         let (tx_new, input_index, tx_prev_out) = get_script_parameters(code);
         let mut script = Script::new(tx_new, input_index, tx_prev_out);
@@ -377,7 +387,7 @@ mod tests {
         let result = script.exec();
         assert!(result.invalid);
         assert!(result.stack.is_empty());
-        
+
         let code = hex::decode("0101010188").unwrap();
         let (tx_new, input_index, tx_prev_out) = get_script_parameters(code);
         let mut script = Script::new(tx_new, input_index, tx_prev_out);
@@ -395,15 +405,29 @@ mod tests {
         let scriptsig = hex::decode("493046022100c352d3dd993a981beba4a63ad15c209275ca9470abfcd57da93b58e4eb5dce82022100840792bc1f456062819f15d33ee7055cf7b5ee1af1ebcc6028d9cdb1c3af7748014104f46db5e9d61a9dc27b8d64ad23e7383a4e6ca164593c2527c038c0857eb67ee8e825dca65046b82c9331586c82e0fd1f633f25f87c161bc6f8a630121df2b3d3").unwrap();
 
         let mut hash = [0 as u8; 32];
-        for (i, byte) in hex::decode("87a157f3fd88ac7907c05fc55e271dc4acdc5605d187d646604ca8c0e9382e03").unwrap().iter().enumerate() {
+        for (i, byte) in
+            hex::decode("87a157f3fd88ac7907c05fc55e271dc4acdc5605d187d646604ca8c0e9382e03")
+                .unwrap()
+                .iter()
+                .enumerate()
+        {
             hash[31 - i] = *byte;
         }
         tx_new.add_input(hash, 0, scriptsig);
-        tx_new.add_output(556_000_000, hex::decode("76a914c398efa9c392ba6013c5e04ee729755ef7f58b3288ac").unwrap());
-        tx_new.add_output(4_444_000_000, hex::decode("76a914948c765a6914d43f2a7ac177da2c2f6b52de3d7c88ac").unwrap());
+        tx_new.add_output(
+            556_000_000,
+            hex::decode("76a914c398efa9c392ba6013c5e04ee729755ef7f58b3288ac").unwrap(),
+        );
+        tx_new.add_output(
+            4_444_000_000,
+            hex::decode("76a914948c765a6914d43f2a7ac177da2c2f6b52de3d7c88ac").unwrap(),
+        );
 
         // Verify the hash of the transaction
-        assert_eq!("fff2525b8931402dd09222c50775608f75787bd2b87e56995a7bdd30f79702c4", hex::encode(tx_new.hash()));
+        assert_eq!(
+            "fff2525b8931402dd09222c50775608f75787bd2b87e56995a7bdd30f79702c4",
+            hex::encode(tx_new.hash())
+        );
 
         let input_index = 0;
 
@@ -419,7 +443,7 @@ mod tests {
         assert_eq!(result.stack.len(), 1);
         match result.stack[0] {
             StackEntry::Bool(true) => (),
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
@@ -430,24 +454,39 @@ mod tests {
         let mut tx_new = Box::new(Transaction::new());
 
         let mut hash = [0 as u8; 32];
-        for (i, byte) in hex::decode("41b02a6333272b9c5df83603ac91d0710730aee5bbdeeef4f95afc39018053db").unwrap().iter().enumerate() {
+        for (i, byte) in
+            hex::decode("41b02a6333272b9c5df83603ac91d0710730aee5bbdeeef4f95afc39018053db")
+                .unwrap()
+                .iter()
+                .enumerate()
+        {
             hash[31 - i] = *byte;
         }
         let scriptsig = hex::decode("4830450220443e88089b0685c3b24ef78c28fd65dc98e7c473edbfa7e2324912252f0dd677022100e4d1b9f84c0e034d8dc0a556b2136b0257078e68e86d6313faad0ea95049f97001").unwrap();
         tx_new.add_input(hash, 0, scriptsig);
 
         let mut hash = [0 as u8; 32];
-        for (i, byte) in hex::decode("6a7d09bf1629bc5147e5adbcb6fac39de6616d2a281c905ae04b528ae95e416d").unwrap().iter().enumerate() {
+        for (i, byte) in
+            hex::decode("6a7d09bf1629bc5147e5adbcb6fac39de6616d2a281c905ae04b528ae95e416d")
+                .unwrap()
+                .iter()
+                .enumerate()
+        {
             hash[31 - i] = *byte;
         }
         let scriptsig = hex::decode("483045022100d11686794cb7998dfdcdc46114b52d887bb37cc7830ee1208893759026b83c0002206bd00a793cf5b20d8d9d71a2d690ce882dc97a89010cb0b3b758b44944872cb401").unwrap();
         tx_new.add_input(hash, 0, scriptsig);
 
-
-        tx_new.add_output(10_000_000_000, hex::decode("76a9148fe32b94a6760650409dab4f64252f3f07f8f33e88ac").unwrap());
+        tx_new.add_output(
+            10_000_000_000,
+            hex::decode("76a9148fe32b94a6760650409dab4f64252f3f07f8f33e88ac").unwrap(),
+        );
 
         // Verify the hash of the transaction
-        assert_eq!("5f87fb3a7491ef0a74003edd51de0a4533a354728f17140520da5e7df579d464", hex::encode(tx_new.hash()));
+        assert_eq!(
+            "5f87fb3a7491ef0a74003edd51de0a4533a354728f17140520da5e7df579d464",
+            hex::encode(tx_new.hash())
+        );
 
         // Check first input
         let input_index = 0;
@@ -464,7 +503,7 @@ mod tests {
         assert_eq!(result.stack.len(), 1);
         match result.stack[0] {
             StackEntry::Bool(true) => (),
-            _ => panic!()
+            _ => panic!(),
         }
 
         // Check second input
@@ -482,7 +521,7 @@ mod tests {
         assert_eq!(result.stack.len(), 1);
         match result.stack[0] {
             StackEntry::Bool(true) => (),
-            _ => panic!()
+            _ => panic!(),
         }
     }
 }
