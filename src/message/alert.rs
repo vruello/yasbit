@@ -337,4 +337,27 @@ mod tests {
         );
         assert_eq!(alert, expected);
     }
+
+    #[test]
+    fn test_message_alert_serialize_deserialize() {
+        let alert = MessageAlert::new(
+            1,
+            1329620535,
+            1329792435,
+            1010,
+            1009,
+            vec![1, 2, 3],
+            10000,
+            61000,
+            vec![String::from("babar"), String::from("Hello world")],
+            100,
+            String::from("toto"),
+            String::from("See bitcoin.org/feb20 if you have trouble connecting after 20 February"),
+            String::default(),
+            true,
+        );
+        let bytes = alert.bytes();
+        let new_alert = MessageAlert::from_bytes(&bytes);
+        assert_eq!(alert, new_alert);
+    }
 }
