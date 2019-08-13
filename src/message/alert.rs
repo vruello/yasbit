@@ -4,6 +4,9 @@ use crate::message::MessageCommand;
 use crate::utils;
 use crate::variable_integer::VariableInteger;
 
+// FIXME: alert system is deprecated. Alerts can not be trusted anymore.
+// Keys have been disclosed here: https://bitcoin.org/en/posts/alert-key-and-vulnerabilities-disclosure
+
 // FIXME: There should be a variable of a constant saying on which network we are
 // so that we can choose in which pub key we trust.
 
@@ -11,13 +14,12 @@ use crate::variable_integer::VariableInteger;
 static TRUSTED_PUBLIC_KEYS: &'static [&'static str] = &[
     "04fc9702847840aaf195de8442ebecedf5b095cdbb9bc716bda9110971b28a49e0ead8564ff0db22209e0374782c093bb899692d524e9d6a6956e7c5ecbcd68284", // Main net
     "04302390343f91cc401d56d68b123028bf52e5fca1939df127f63c6467cdf9c8e2c14b61104cf817d0b780da337893ecc4aaff1309e536162dabbdb45200ca2b0a", // Test net
-    "041c432310672596035e3590e3fbbc8834b0e6ce624f77d9b6ecf2e8546b657cfee093c2302ca26588e868014c6cddbc20041db82101f669c91310986445b516d2" // FIXME: for tests only. This should NOT be kept! 
 ];
 
 // This key will be used to emit alert messages
-// This is only used for testing
+// This is the private key of the test net alert system
 static SIGNING_KEY: &'static str =
-    "30740201010420e1db8e33d0f26ba770958cc1ec28497759993483ab256765db57883f2fb2c691a00706052b8104000aa144034200041c432310672596035e3590e3fbbc8834b0e6ce624f77d9b6ecf2e8546b657cfee093c2302ca26588e868014c6cddbc20041db82101f669c91310986445b516d2";
+    "308201130201010420474d447aa6f46b4f45f67f21180a5de2722fc807401c4c4d95fdae64b3d6c294a081a53081a2020101302c06072a8648ce3d0101022100fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f300604010004010704410479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8022100fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141020101a14403420004302390343f91cc401d56d68b123028bf52e5fca1939df127f63c6467cdf9c8e2c14b61104cf817d0b780da337893ecc4aaff1309e536162dabbdb45200ca2b0a";
 
 const NAME: &str = "alert";
 

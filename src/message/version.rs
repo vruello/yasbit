@@ -22,6 +22,7 @@ pub struct MessageVersion {
     // This nonce is used to detect connections to self.
     user_agent: String, // User Agent (0x00 if string is 0 bytes long)
     start_height: u32,  // The last block received by the emitting node
+    relay: bool,        // Whether the remote peer should announce relayed transactions or not
 }
 
 impl message::MessageCommand for MessageVersion {
@@ -37,7 +38,7 @@ impl message::MessageCommand for MessageVersion {
         let user_agent_len_size = VariableInteger::new(self.user_agent.len() as u64)
             .bytes()
             .len();
-        (4 + 8 + 8 + 26 + 26 + 8 + user_agent_len_size + self.user_agent.len() + 4) as u32
+        (4 + 8 + 8 + 26 + 26 + 8 + user_agent_len_size + self.user_agent.len() + 4 + 1) as u32
     }
 
     fn bytes(&self) -> Vec<u8> {
@@ -52,39 +53,55 @@ impl message::MessageCommand for MessageVersion {
         bytes.extend_from_slice(user_agent_length.bytes().as_slice());
         bytes.extend_from_slice(self.user_agent.as_bytes());
         bytes.extend_from_slice(&self.start_height.to_le_bytes());
+        bytes.push(self.relay as u8);
         bytes
     }
 
     fn from_bytes(bytes: &[u8]) -> Self {
         let mut index = 0;
-        let version = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 4)]));
-        index += 4;
-        let services = u64::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 8)]));
-        index += 8;
-        let timestamp = u64::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 8)]));
-        index += 8;
+        let mut next_size = 4;
+        let version =
+            u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+
+        next_size = 8;
+        let services =
+            u64::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+
+        let timestamp =
+            u64::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
 
         let addr_recv = network::NetAddrVersion::from_bytes(
             &bytes[index..(index + network::NET_ADDR_VERSION_SIZE)],
         );
         index += network::NET_ADDR_VERSION_SIZE;
+
         let addr_from = network::NetAddrVersion::from_bytes(
             &bytes[index..(index + network::NET_ADDR_VERSION_SIZE)],
         );
         index += network::NET_ADDR_VERSION_SIZE;
 
-        let nonce = u64::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 8)]));
-        index += 8;
+        next_size = 8;
+        let nonce = u64::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
 
         let (user_agent_length, user_agent_size) =
             VariableInteger::from_bytes(&bytes[index..]).unwrap();
         index += user_agent_size;
+
         let user_agent = std::str::from_utf8(&bytes[index..(index + (user_agent_length as usize))])
             .unwrap()
             .to_owned();
         index += user_agent_length as usize;
+
         let start_height = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 4)]));
         index += 4;
+
+        let relay = bytes[index] != 0;
+        index += 1;
+
         assert_eq!(index, bytes.len());
 
         MessageVersion {
@@ -96,6 +113,7 @@ impl message::MessageCommand for MessageVersion {
             nonce,
             user_agent,
             start_height,
+            relay,
         }
     }
 }
@@ -110,6 +128,7 @@ impl MessageVersion {
         nonce: u64,
         user_agent: String,
         start_height: u32,
+        relay: bool,
     ) -> Self {
         MessageVersion {
             version,
@@ -120,6 +139,7 @@ impl MessageVersion {
             nonce,
             user_agent,
             start_height,
+            relay,
         }
     }
 }
@@ -141,15 +161,16 @@ mod tests {
             0x6517E68C5DB32E3B,
             "/Satoshi:0.7.2/".to_string(),
             0x033EC0,
+            false,
         );
 
-        assert_eq!(message.length(), 100);
+        assert_eq!(message.length(), 101);
         assert_eq!(hex::encode(message.name()), "76657273696f6e0000000000");
         assert_eq!(
             "62ea0000010000000000000011b2d050000000000100000000000000000000000\
              00000000000ffff000000000000010000000000000000000000000000000000fff\
              f0000000000003b2eb35d8ce617650f2f5361746f7368693a302e372e322fc03e0\
-             300",
+             30000",
             hex::encode(message.bytes())
         );
         assert_eq!(message, MessageVersion::from_bytes(&message.bytes()));

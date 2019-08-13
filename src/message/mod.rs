@@ -5,6 +5,7 @@ use crate::utils;
 pub mod alert;
 pub mod getaddr;
 pub mod getblocks;
+pub mod verack;
 pub mod version;
 
 pub const MAGIC_MAIN: u32 = 0xD9B4BEF9;
@@ -19,9 +20,10 @@ pub const NODE_WITNESS: u64 = 8;
 pub const NODE_NETWORK_LIMITED: u64 = 1024;
 
 #[derive(Debug)]
-enum MessageType {
+pub enum MessageType {
     Version(Message<version::MessageVersion>),
     Alert(Message<alert::MessageAlert>),
+    Verack(Message<verack::MessageVerack>),
 }
 
 pub trait MessageCommand {
@@ -35,7 +37,7 @@ pub trait MessageCommand {
 pub struct Message<T: MessageCommand> {
     magic: u32, // Magic value indicating message origin network, and used to
     // seek to next message when stream state is unknown
-    command: T,
+    pub command: T,
 }
 
 impl<T> Message<T>
@@ -70,18 +72,40 @@ where
     }
 }
 
-fn parse(bytes: &[u8]) -> Result<MessageType, &str> {
+#[derive(Debug)]
+pub enum ParseError {
+    InvalidMagicBytes,
+    InvalidChecksum,
+    UnknownMessage(String),
+    Partial(usize),
+}
+
+fn check_size(bytes: &[u8], length: usize) -> bool {
+    bytes.len() >= length
+}
+
+pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
+    let mut to_read = 24;
     let mut index = 0;
-    let magic = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 4)]));
-    index += 4;
+
+    let mut next_size = 4;
+    if !check_size(bytes, index + next_size) {
+        return Err(ParseError::Partial(to_read - bytes.len()));
+    }
+    let magic = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+    index += next_size;
 
     // Check magic
     if !(magic == MAGIC_MAIN || magic == MAGIC_TESTNET) {
-        return Err("Invalid magicbytes");
+        return Err(ParseError::InvalidMagicBytes);
     }
 
+    next_size = 12;
+    if !check_size(bytes, index + next_size) {
+        return Err(ParseError::Partial(to_read - bytes.len()));
+    }
     let mut first_zero = 0;
-    for i in 0..12 {
+    for i in 0..next_size {
         if bytes[index + i] == 0 {
             first_zero = i;
             break;
@@ -90,19 +114,34 @@ fn parse(bytes: &[u8]) -> Result<MessageType, &str> {
     let name = std::str::from_utf8(&bytes[index..(index + first_zero)])
         .unwrap()
         .to_owned();
-    index += 12;
+    index += next_size;
 
-    let length = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + 4)]));
-    index += 4;
+    next_size = 4;
+    if !check_size(bytes, index + next_size) {
+        return Err(ParseError::Partial(to_read - bytes.len()));
+    }
+    let length = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+    index += next_size;
 
-    let checksum = &bytes[index..(index + 4)];
-    index += 4;
+    // Now we know how many bytes have to be read
+    to_read += length as usize;
 
+    next_size = 4;
+    if !check_size(bytes, index + next_size) {
+        return Err(ParseError::Partial(to_read - bytes.len()));
+    }
+    let checksum = &bytes[index..(index + next_size)];
+    index += next_size;
+
+    next_size = length as usize;
+    if !check_size(bytes, index + next_size) {
+        return Err(ParseError::Partial(to_read - bytes.len()));
+    }
     let payload = &bytes[index..(index + length as usize)];
 
     // Check checksum
     if &crypto::hash32(payload)[0..4] != checksum {
-        return Err("Invalid checksum");
+        return Err(ParseError::InvalidChecksum);
     }
 
     let message;
@@ -112,11 +151,14 @@ fn parse(bytes: &[u8]) -> Result<MessageType, &str> {
     } else if name == "alert" {
         let command = alert::MessageAlert::from_bytes(&payload);
         message = MessageType::Alert(Message { magic, command });
+    } else if name == "verack" {
+        let command = verack::MessageVerack::from_bytes(&payload);
+        message = MessageType::Verack(Message { magic, command });
     } else {
-        return Err("Unknown message");
+        return Err(ParseError::UnknownMessage(name.clone()));
     }
 
-    Ok(message)
+    Ok((message, 24 + length as usize))
 }
 
 #[cfg(test)]
@@ -168,43 +210,69 @@ mod tests {
         let payload_hex = "62ea0000010000000000000011b2d0500000000001000000000\
                            0000000000000000000000000ffff0000000000000000000000\
                            00000000000000000000000000ffff0000000000003b2eb35d8\
-                           ce617650f2f5361746f7368693a302e372e322fc03e0300";
+                           ce617650f2f5361746f7368693a302e372e322fc03e030001";
         let payload = hex::decode(&payload_hex).unwrap();
         let mock = MessageMock::new(name, payload.clone());
 
         assert_eq!(mock.name(), name);
-        assert_eq!(mock.length(), 100);
+        assert_eq!(mock.length(), 101);
         assert_eq!(payload_hex, hex::encode(mock.bytes()));
 
         let message = Message::new(MAGIC_MAIN, mock);
 
         assert_eq!(message.magic, MAGIC_MAIN);
         assert_eq!(
-            "f9beb4d976657273696f6e000000000064000000358d493262ea0000010000000\
+            "f9beb4d976657273696f6e000000000065000000c5d995ec62ea0000010000000\
              000000011b2d05000000000010000000000000000000000000000000000ffff000\
              000000000000000000000000000000000000000000000ffff0000000000003b2eb\
-             35d8ce617650f2f5361746f7368693a302e372e322fc03e0300",
+             35d8ce617650f2f5361746f7368693a302e372e322fc03e030001",
             hex::encode(message.bytes())
         );
 
         let bytes = message.bytes();
-        let parsed_message = parse(&bytes).unwrap();
+        let (parsed_message, length) = parse(&bytes).unwrap();
 
         if let MessageType::Version(version) = parsed_message {
             assert_eq!(bytes, version.bytes());
         }
+        assert_eq!(length, 125);
 
         let mut inv_checksum_bytes = bytes.clone();
         inv_checksum_bytes[35] = inv_checksum_bytes[35] + 1;
         match parse(&inv_checksum_bytes) {
-            Err(mess) => assert_eq!(mess, "Invalid checksum"),
+            Err(ParseError::InvalidChecksum) => assert!(true),
             _ => assert!(false),
         }
 
         let mut inv_magic_bytes = bytes.clone();
         inv_magic_bytes[0] = inv_magic_bytes[0] + 1;
         match parse(&inv_magic_bytes) {
-            Err(mess) => assert_eq!(mess, "Invalid magicbytes"),
+            Err(ParseError::InvalidMagicBytes) => assert!(true),
+            _ => assert!(false),
+        }
+
+        match parse(&bytes[..5]) {
+            Err(ParseError::Partial(nb)) => assert_eq!(nb, 19),
+            _ => assert!(false),
+        }
+
+        match parse(&bytes[..19]) {
+            Err(ParseError::Partial(nb)) => assert_eq!(nb, 5),
+            _ => assert!(false),
+        }
+
+        match parse(&bytes[..20]) {
+            Err(ParseError::Partial(nb)) => assert_eq!(nb, 105),
+            _ => assert!(false),
+        }
+
+        match parse(&bytes[..24]) {
+            Err(ParseError::Partial(nb)) => assert_eq!(nb, 101),
+            _ => assert!(false),
+        }
+
+        match parse(&bytes[..122]) {
+            Err(ParseError::Partial(nb)) => assert_eq!(nb, 3),
             _ => assert!(false),
         }
     }
