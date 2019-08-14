@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use crate::crypto;
 use crate::network;
 use crate::utils;
@@ -6,6 +8,8 @@ pub mod addr;
 pub mod alert;
 pub mod getaddr;
 pub mod getblocks;
+pub mod ping;
+pub mod pong;
 pub mod verack;
 pub mod version;
 
@@ -27,6 +31,8 @@ pub enum MessageType {
     Verack(Message<verack::MessageVerack>),
     Addr(Message<addr::MessageAddr>),
     GetAddr(Message<getaddr::MessageGetAddr>),
+    Ping(Message<ping::MessagePing>),
+    Pong(Message<pong::MessagePong>),
 }
 
 pub trait MessageCommand {
@@ -34,6 +40,7 @@ pub trait MessageCommand {
     fn from_bytes(_: &[u8]) -> Self;
     fn length(&self) -> u32;
     fn name(&self) -> [u8; 12];
+    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>);
 }
 
 #[derive(Debug, PartialEq)]
@@ -163,6 +170,12 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     } else if name == "addr" {
         let command = addr::MessageAddr::from_bytes(&payload);
         message = MessageType::Addr(Message { magic, command });
+    } else if name == "ping" {
+        let command = ping::MessagePing::from_bytes(&payload);
+        message = MessageType::Ping(Message { magic, command });
+    } else if name == "pong" {
+        let command = pong::MessagePong::from_bytes(&payload);
+        message = MessageType::Pong(Message { magic, command });
     } else {
         return Err(ParseError::UnknownMessage(name.clone()));
     }
@@ -202,6 +215,8 @@ mod tests {
                 payload: bytes.to_vec(),
             }
         }
+
+        fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {}
     }
 
     impl MessageMock {

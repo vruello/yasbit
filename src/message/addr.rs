@@ -1,4 +1,5 @@
 use std::net;
+use std::sync::mpsc;
 
 use crate::message;
 use crate::message::MessageCommand;
@@ -54,6 +55,8 @@ impl message::MessageCommand for MessageAddr {
 
         MessageAddr { addr_list }
     }
+
+    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {}
 }
 
 impl MessageAddr {

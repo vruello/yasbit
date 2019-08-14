@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use crate::message;
 use crate::message::MessageCommand;
 
@@ -29,6 +31,8 @@ impl message::MessageCommand for MessageGetAddr {
         assert!(bytes.is_empty());
         MessageGetAddr {}
     }
+
+    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {}
 }
 
 impl MessageGetAddr {

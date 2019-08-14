@@ -1,4 +1,5 @@
 use std::net;
+use std::sync::mpsc;
 
 use crate::message;
 use crate::message::MessageCommand;
@@ -115,6 +116,13 @@ impl message::MessageCommand for MessageVersion {
             start_height,
             relay,
         }
+    }
+
+    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {
+        let verack = message::verack::MessageVerack::new();
+        println!("Sending verak message: {:?}", verack);
+        let message = message::Message::new(message::MAGIC_MAIN, verack);
+        t_cw.send(message.bytes()).unwrap();
     }
 }
 

@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use crate::crypto;
 use crate::message;
 use crate::message::MessageCommand;
@@ -56,6 +58,8 @@ impl message::MessageCommand for MessageGetBlocks {
             hash_stop: crypto::hash32("babar".as_bytes()),
         }
     }
+
+    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {}
 }
 
 impl MessageGetBlocks {

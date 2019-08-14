@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use crate::crypto;
 use crate::message;
 use crate::message::MessageCommand;
@@ -191,6 +193,8 @@ impl message::MessageCommand for MessageAlert {
             trusted,
         }
     }
+
+    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {}
 }
 
 impl MessageAlert {

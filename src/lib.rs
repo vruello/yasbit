@@ -64,7 +64,7 @@ pub fn run() {
     loop {
         let message_type = r_rc.recv().unwrap();
         // Do something with the message
-        handle_message(message_type, t_cw.clone());
+        handle_message(message_type, &t_cw);
     }
 }
 
@@ -129,38 +129,43 @@ fn reader(mut stream: net::TcpStream, t_rc: mpsc::Sender<message::MessageType>) 
     }
 }
 
-fn handle_message(message_type: message::MessageType, t_cw: mpsc::Sender<Vec<u8>>) {
+fn handle_message(message_type: message::MessageType, t_cw: &mpsc::Sender<Vec<u8>>) {
     match message_type {
-        message::MessageType::Alert(mess) => println!(
-            "Received message {}: {:?}",
-            std::str::from_utf8(&mess.command.name()).unwrap(),
-            mess.command
-        ),
-        message::MessageType::Version(mess) => {
-            println!(
-                "Received {} message: {:?}",
-                std::str::from_utf8(&mess.command.name()).unwrap(),
-                mess.command
-            );
-            let verack = message::verack::MessageVerack::new();
-            println!("Sending verak message: {:?}", verack);
-            let message = message::Message::new(message::MAGIC_MAIN, verack);
-            t_cw.send(message.bytes()).unwrap();
+        message::MessageType::Alert(mess) => {
+            display_message(&mess.command);
+            mess.command.handle(&t_cw)
         }
-        message::MessageType::Verack(mess) => println!(
-            "Received {} message: {:?}",
-            std::str::from_utf8(&mess.command.name()).unwrap(),
-            mess.command
-        ),
-        message::MessageType::GetAddr(mess) => println!(
-            "Received {} message: {:?}",
-            std::str::from_utf8(&mess.command.name()).unwrap(),
-            mess.command
-        ),
-        message::MessageType::Addr(mess) => println!(
-            "Received {} message: {:?}",
-            std::str::from_utf8(&mess.command.name()).unwrap(),
-            mess.command
-        ),
+        message::MessageType::Version(mess) => {
+            display_message(&mess.command);
+            mess.command.handle(&t_cw)
+        }
+        message::MessageType::Verack(mess) => {
+            display_message(&mess.command);
+            mess.command.handle(&t_cw)
+        }
+        message::MessageType::GetAddr(mess) => {
+            display_message(&mess.command);
+            mess.command.handle(&t_cw)
+        }
+        message::MessageType::Addr(mess) => {
+            display_message(&mess.command);
+            mess.command.handle(&t_cw)
+        }
+        message::MessageType::Ping(mess) => {
+            display_message(&mess.command);
+            mess.command.handle(&t_cw)
+        }
+        message::MessageType::Pong(mess) => {
+            display_message(&mess.command);
+            mess.command.handle(&t_cw)
+        }
     };
+}
+
+pub fn display_message<T: message::MessageCommand + std::fmt::Debug>(command: &T) {
+    println!(
+        "Received {} message: {:?}",
+        std::str::from_utf8(&command.name()).unwrap(),
+        command
+    );
 }
