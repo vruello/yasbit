@@ -3,6 +3,7 @@ use crate::message::MessageCommand;
 
 const NAME: &str = "getaddr";
 
+#[derive(Debug, PartialEq)]
 pub struct MessageGetAddr {
     // No payload
 }
@@ -25,6 +26,7 @@ impl message::MessageCommand for MessageGetAddr {
     }
 
     fn from_bytes(bytes: &[u8]) -> Self {
+        assert!(bytes.is_empty());
         MessageGetAddr {}
     }
 }
@@ -49,5 +51,9 @@ mod tests {
         );
         assert_eq!(message_get_addr.length(), 0);
         assert_eq!(message_get_addr.bytes(), vec![]);
+        assert_eq!(
+            message_get_addr,
+            MessageGetAddr::from_bytes(&message_get_addr.bytes())
+        );
     }
 }

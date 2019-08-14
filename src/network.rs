@@ -8,6 +8,9 @@ pub trait NetAddrBase {
     fn from_bytes(_: &[u8]) -> Self;
 }
 
+pub const NET_ADDR_VERSION_SIZE: usize = 26;
+pub const NET_ADDR_SIZE: usize = NET_ADDR_VERSION_SIZE + 4;
+
 #[derive(PartialEq, Debug)]
 pub struct NetAddr {
     time: u32,
@@ -49,8 +52,6 @@ pub struct NetAddrVersion {
     ip: net::Ipv6Addr,
     port: u16,
 }
-
-pub const NET_ADDR_VERSION_SIZE: usize = 26;
 
 impl NetAddrBase for NetAddrVersion {
     fn bytes(&self) -> Vec<u8> {

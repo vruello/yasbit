@@ -2,6 +2,7 @@ use crate::crypto;
 use crate::network;
 use crate::utils;
 
+pub mod addr;
 pub mod alert;
 pub mod getaddr;
 pub mod getblocks;
@@ -24,6 +25,8 @@ pub enum MessageType {
     Version(Message<version::MessageVersion>),
     Alert(Message<alert::MessageAlert>),
     Verack(Message<verack::MessageVerack>),
+    Addr(Message<addr::MessageAddr>),
+    GetAddr(Message<getaddr::MessageGetAddr>),
 }
 
 pub trait MessageCommand {
@@ -154,6 +157,12 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     } else if name == "verack" {
         let command = verack::MessageVerack::from_bytes(&payload);
         message = MessageType::Verack(Message { magic, command });
+    } else if name == "getaddr" {
+        let command = getaddr::MessageGetAddr::from_bytes(&payload);
+        message = MessageType::GetAddr(Message { magic, command });
+    } else if name == "addr" {
+        let command = addr::MessageAddr::from_bytes(&payload);
+        message = MessageType::Addr(Message { magic, command });
     } else {
         return Err(ParseError::UnknownMessage(name.clone()));
     }
