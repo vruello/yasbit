@@ -167,6 +167,10 @@ fn handle_message(message_type: message::MessageType, t_cw: &mpsc::Sender<Vec<u8
             display_message(&mess.command);
             mess.command.handle(&t_cw)
         }
+        message::MessageType::SendHeaders(mess) => {
+            display_message(&mess.command);
+            mess.command.handle(&t_cw)
+        }
     };
 }
 

@@ -12,6 +12,7 @@ pub mod getblocks;
 pub mod getheaders;
 pub mod ping;
 pub mod pong;
+pub mod sendheaders;
 pub mod verack;
 pub mod version;
 
@@ -37,6 +38,7 @@ pub enum MessageType {
     Pong(Message<pong::MessagePong>),
     GetHeaders(Message<getheaders::MessageGetHeaders>),
     FeeFilter(Message<feefilter::MessageFeeFilter>),
+    SendHeaders(Message<sendheaders::MessageSendHeaders>),
 }
 
 pub trait MessageCommand {
@@ -186,6 +188,9 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     } else if name == "feefilter" {
         let command = feefilter::MessageFeeFilter::from_bytes(&payload);
         message = MessageType::FeeFilter(Message { magic, command });
+    } else if name == "sendheaders" {
+        let command = sendheaders::MessageSendHeaders::from_bytes(&payload);
+        message = MessageType::SendHeaders(Message { magic, command });
     } else {
         return Err(ParseError::UnknownMessage(name.clone()));
     }
