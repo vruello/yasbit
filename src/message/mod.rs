@@ -6,6 +6,7 @@ use crate::utils;
 
 pub mod addr;
 pub mod alert;
+pub mod feefilter;
 pub mod getaddr;
 pub mod getblocks;
 pub mod getheaders;
@@ -35,6 +36,7 @@ pub enum MessageType {
     Ping(Message<ping::MessagePing>),
     Pong(Message<pong::MessagePong>),
     GetHeaders(Message<getheaders::MessageGetHeaders>),
+    FeeFilter(Message<feefilter::MessageFeeFilter>),
 }
 
 pub trait MessageCommand {
@@ -181,6 +183,9 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     } else if name == "getheaders" {
         let command = getheaders::MessageGetHeaders::from_bytes(&payload);
         message = MessageType::GetHeaders(Message { magic, command });
+    } else if name == "feefilter" {
+        let command = feefilter::MessageFeeFilter::from_bytes(&payload);
+        message = MessageType::FeeFilter(Message { magic, command });
     } else {
         return Err(ParseError::UnknownMessage(name.clone()));
     }
