@@ -8,6 +8,7 @@ pub mod addr;
 pub mod alert;
 pub mod getaddr;
 pub mod getblocks;
+pub mod getheaders;
 pub mod ping;
 pub mod pong;
 pub mod verack;
@@ -33,6 +34,7 @@ pub enum MessageType {
     GetAddr(Message<getaddr::MessageGetAddr>),
     Ping(Message<ping::MessagePing>),
     Pong(Message<pong::MessagePong>),
+    GetHeaders(Message<getheaders::MessageGetHeaders>),
 }
 
 pub trait MessageCommand {
@@ -176,6 +178,9 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     } else if name == "pong" {
         let command = pong::MessagePong::from_bytes(&payload);
         message = MessageType::Pong(Message { magic, command });
+    } else if name == "getheaders" {
+        let command = getheaders::MessageGetHeaders::from_bytes(&payload);
+        message = MessageType::GetHeaders(Message { magic, command });
     } else {
         return Err(ParseError::UnknownMessage(name.clone()));
     }
