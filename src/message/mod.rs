@@ -10,6 +10,7 @@ pub mod feefilter;
 pub mod getaddr;
 pub mod getblocks;
 pub mod getheaders;
+pub mod inv;
 pub mod ping;
 pub mod pong;
 pub mod sendheaders;
@@ -39,6 +40,7 @@ pub enum MessageType {
     GetHeaders(Message<getheaders::MessageGetHeaders>),
     FeeFilter(Message<feefilter::MessageFeeFilter>),
     SendHeaders(Message<sendheaders::MessageSendHeaders>),
+    Inv(Message<inv::MessageInv>),
 }
 
 pub trait MessageCommand {
@@ -191,6 +193,9 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     } else if name == "sendheaders" {
         let command = sendheaders::MessageSendHeaders::from_bytes(&payload);
         message = MessageType::SendHeaders(Message { magic, command });
+    } else if name == "inv" {
+        let command = inv::MessageInv::from_bytes(&payload);
+        message = MessageType::Inv(Message { magic, command });
     } else {
         return Err(ParseError::UnknownMessage(name.clone()));
     }

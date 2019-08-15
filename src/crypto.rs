@@ -29,17 +29,25 @@ pub fn hash20(data: &[u8]) -> Hash20 {
     array
 }
 
-pub fn to_hash32(data: &[u8]) -> Result<Hash32, String> {
+pub fn bytes_to_hash32(data: &[u8]) -> Result<Hash32, &'static str> {
     if data.len() != 32 {
-        return Err("Invalid length".to_string());
+        return Err("Invalid length");
     }
 
-    let mut hash = [0 as u8; 32];
-    for (i, c) in data.iter().enumerate() {
+    let mut hash = [0u8; 32];
+    for (i, c) in data.iter().rev().enumerate() {
         hash[i] = *c;
     }
 
     Ok(hash)
+}
+
+pub fn hash32_to_bytes(hash: &Hash32) -> [u8; 32] {
+    let mut bytes = [0u8; 32];
+    for (i, c) in hash.iter().rev().enumerate() {
+        bytes[i] = *c;
+    }
+    bytes
 }
 
 pub trait Hashable {
@@ -69,7 +77,9 @@ pub fn check_signature(
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
+    use crate::utils;
 
     #[test]
     fn test_hash32() {
@@ -224,17 +234,35 @@ mod tests {
     #[should_panic]
     fn test_to_hash32_panic() {
         let data: [u8; 1] = [0];
-        let hash = to_hash32(&data).unwrap();
+        let hash = bytes_to_hash32(&data).unwrap();
     }
 
     #[test]
-    fn test_to_hash32() {
+    fn test_bytes_to_hash32() {
         let data = hex::decode("d39f608a7775b537729884d4e6633bb2105e55a16a14d31b0000000000000000")
             .unwrap();
 
-        let hash = to_hash32(&data.as_slice()).unwrap();
+        let hash = bytes_to_hash32(&data.as_slice()).unwrap();
 
         assert_eq!(hash.len(), 32);
-        assert_eq!(hash, data.as_slice());
+        assert_eq!(
+            hex::encode(hash),
+            "00000000000000001bd3146aa1555e10b23b63e6d484987237b575778a609fd3"
+        );
+    }
+
+    #[test]
+    fn test_hash32_to_bytes() {
+        let data = utils::clone_into_array(
+            &hex::decode("d39f608a7775b537729884d4e6633bb2105e55a16a14d31b0000000000000000")
+                .unwrap(),
+        );
+
+        let bytes = hash32_to_bytes(&data);
+        assert_eq!(bytes.len(), 32);
+        assert_eq!(
+            hex::encode(&bytes),
+            "00000000000000001bd3146aa1555e10b23b63e6d484987237b575778a609fd3"
+        );
     }
 }

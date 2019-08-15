@@ -83,6 +83,7 @@ impl MessageGetBlocks {
 mod tests {
 
     use super::*;
+    use crate::utils;
 
     #[test]
     fn test_message_get_blocks_empty() {
@@ -113,29 +114,22 @@ mod tests {
         let getblocks = MessageGetBlocks::new(
             70001,
             vec![
-                crypto::to_hash32(
-                    &hex::decode(
-                        "d39f608a7775b537729884d4e6633bb2105e55a16a14d31b0000000000000000",
-                    )
-                    .unwrap()
-                    .as_slice(),
-                )
-                .unwrap(),
-                crypto::to_hash32(
-                    &hex::decode(
-                        "5c3e6403d40837110a2e8afb602b1c01714bda7ce23bea0a0000000000000000",
-                    )
-                    .unwrap()
-                    .as_slice(),
-                )
-                .unwrap(),
+                utils::clone_into_array(
+                    hex::decode("d39f608a7775b537729884d4e6633bb2105e55a16a14d31b0000000000000000")
+                        .unwrap()
+                        .as_slice(),
+                ),
+                utils::clone_into_array(
+                    hex::decode("5c3e6403d40837110a2e8afb602b1c01714bda7ce23bea0a0000000000000000")
+                        .unwrap()
+                        .as_slice(),
+                ),
             ],
-            crypto::to_hash32(
-                &hex::decode("0000000000000000000000000000000000000000000000000000000000000000")
+            utils::clone_into_array(
+                hex::decode("0000000000000000000000000000000000000000000000000000000000000000")
                     .unwrap()
                     .as_slice(),
-            )
-            .unwrap(),
+            ),
         );
 
         assert_eq!(

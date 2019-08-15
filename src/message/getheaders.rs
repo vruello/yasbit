@@ -39,10 +39,10 @@ impl message::MessageCommand for MessageGetHeaders {
         bytes.extend_from_slice(bl_hashes_len.bytes().as_slice());
 
         for hash in self.block_locator_hashes.iter() {
-            bytes.extend_from_slice(hash);
+            bytes.extend_from_slice(&crypto::hash32_to_bytes(&hash));
         }
 
-        bytes.extend_from_slice(&self.hash_stop);
+        bytes.extend_from_slice(&crypto::hash32_to_bytes(&self.hash_stop));
         bytes
     }
 
@@ -59,11 +59,15 @@ impl message::MessageCommand for MessageGetHeaders {
         let mut block_locator_hashes = Vec::with_capacity(bl_hashes_len as usize);
         next_size = 32;
         for _ in 0..bl_hashes_len {
-            block_locator_hashes.push(utils::clone_into_array(&bytes[index..(index + next_size)]));
+            block_locator_hashes.push(utils::clone_into_array(
+                &crypto::bytes_to_hash32(&bytes[index..(index + next_size)]).unwrap(),
+            ));
             index += next_size;
         }
 
-        let hash_stop = utils::clone_into_array(&bytes[index..(index + next_size)]);
+        let hash_stop = utils::clone_into_array(
+            &crypto::bytes_to_hash32(&bytes[index..(index + next_size)]).unwrap(),
+        );
 
         MessageGetHeaders {
             version,
