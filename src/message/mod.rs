@@ -41,6 +41,7 @@ pub enum MessageType {
     FeeFilter(Message<feefilter::MessageFeeFilter>),
     SendHeaders(Message<sendheaders::MessageSendHeaders>),
     Inv(Message<inv::MessageInv>),
+    GetBlocks(Message<getblocks::MessageGetBlocks>),
 }
 
 pub trait MessageCommand {
@@ -196,6 +197,9 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     } else if name == "inv" {
         let command = inv::MessageInv::from_bytes(&payload);
         message = MessageType::Inv(Message { magic, command });
+    } else if name == "getblocks" {
+        let command = getblocks::MessageGetBlocks::from_bytes(&payload);
+        message = MessageType::GetBlocks(Message { magic, command });
     } else {
         return Err(ParseError::UnknownMessage(name.clone()));
     }
