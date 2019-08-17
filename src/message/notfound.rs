@@ -9,14 +9,14 @@ use crate::message::MessageCommand;
 use crate::utils;
 use crate::variable_integer::VariableInteger;
 
-const NAME: &str = "inv";
+const NAME: &str = "notfound";
 
 #[derive(Debug, PartialEq)]
-pub struct MessageInv {
+pub struct MessageNotFound {
     base: MessageInvBase,
 }
 
-impl message::MessageCommand for MessageInv {
+impl message::MessageCommand for MessageNotFound {
     fn name(&self) -> [u8; 12] {
         let mut command = [0; 12];
         for (i, c) in NAME.char_indices() {
@@ -34,7 +34,7 @@ impl message::MessageCommand for MessageInv {
     }
 
     fn from_bytes(bytes: &[u8]) -> Self {
-        MessageInv {
+        MessageNotFound {
             base: MessageInvBase::from_bytes(&bytes),
         }
     }
@@ -50,9 +50,9 @@ impl message::MessageCommand for MessageInv {
     }
 }
 
-impl MessageInv {
+impl MessageNotFound {
     pub fn new(inventory: Vec<InvVect>) -> Self {
-        MessageInv {
+        MessageNotFound {
             base: MessageInvBase { inventory },
         }
     }
@@ -64,8 +64,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_message_inv() {
-        let inv = MessageInv::new(vec![
+    fn test_message_notfound() {
+        let notfound = MessageNotFound::new(vec![
             InvVect {
                 hash_type: MSG_TX,
                 hash: crypto::hash32("babar".as_bytes()),
@@ -77,11 +77,14 @@ mod tests {
         ]);
 
         assert_eq!(
-            inv.name(),
-            ['i' as u8, 'n' as u8, 'v' as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            notfound.name(),
+            [
+                'n' as u8, 'o' as u8, 't' as u8, 'f' as u8, 'o' as u8, 'u' as u8, 'n' as u8,
+                'd' as u8, 0, 0, 0, 0
+            ]
         );
-        assert_eq!(inv.length() as usize, 1 + 2 * 36);
-        assert_eq!(inv.length() as usize, inv.bytes().len());
-        assert_eq!(inv, MessageInv::from_bytes(&inv.bytes()));
+        assert_eq!(notfound.length() as usize, 1 + 2 * 36);
+        assert_eq!(notfound.length() as usize, notfound.bytes().len());
+        assert_eq!(notfound, MessageNotFound::from_bytes(&notfound.bytes()));
     }
 }

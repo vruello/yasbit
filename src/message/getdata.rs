@@ -9,14 +9,14 @@ use crate::message::MessageCommand;
 use crate::utils;
 use crate::variable_integer::VariableInteger;
 
-const NAME: &str = "inv";
+const NAME: &str = "getdata";
 
 #[derive(Debug, PartialEq)]
-pub struct MessageInv {
+pub struct MessageGetData {
     base: MessageInvBase,
 }
 
-impl message::MessageCommand for MessageInv {
+impl message::MessageCommand for MessageGetData {
     fn name(&self) -> [u8; 12] {
         let mut command = [0; 12];
         for (i, c) in NAME.char_indices() {
@@ -34,7 +34,7 @@ impl message::MessageCommand for MessageInv {
     }
 
     fn from_bytes(bytes: &[u8]) -> Self {
-        MessageInv {
+        MessageGetData {
             base: MessageInvBase::from_bytes(&bytes),
         }
     }
@@ -50,9 +50,9 @@ impl message::MessageCommand for MessageInv {
     }
 }
 
-impl MessageInv {
+impl MessageGetData {
     pub fn new(inventory: Vec<InvVect>) -> Self {
-        MessageInv {
+        MessageGetData {
             base: MessageInvBase { inventory },
         }
     }
@@ -64,8 +64,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_message_inv() {
-        let inv = MessageInv::new(vec![
+    fn test_message_getdata() {
+        let getdata = MessageGetData::new(vec![
             InvVect {
                 hash_type: MSG_TX,
                 hash: crypto::hash32("babar".as_bytes()),
@@ -77,11 +77,14 @@ mod tests {
         ]);
 
         assert_eq!(
-            inv.name(),
-            ['i' as u8, 'n' as u8, 'v' as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            getdata.name(),
+            [
+                'g' as u8, 'e' as u8, 't' as u8, 'd' as u8, 'a' as u8, 't' as u8, 'a' as u8, 0, 0,
+                0, 0, 0
+            ]
         );
-        assert_eq!(inv.length() as usize, 1 + 2 * 36);
-        assert_eq!(inv.length() as usize, inv.bytes().len());
-        assert_eq!(inv, MessageInv::from_bytes(&inv.bytes()));
+        assert_eq!(getdata.length() as usize, 1 + 2 * 36);
+        assert_eq!(getdata.length() as usize, getdata.bytes().len());
+        assert_eq!(getdata, MessageGetData::from_bytes(&getdata.bytes()));
     }
 }

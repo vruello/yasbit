@@ -9,8 +9,11 @@ pub mod alert;
 pub mod feefilter;
 pub mod getaddr;
 pub mod getblocks;
+pub mod getdata;
 pub mod getheaders;
 pub mod inv;
+pub mod inv_base;
+pub mod notfound;
 pub mod ping;
 pub mod pong;
 pub mod sendheaders;
@@ -41,7 +44,9 @@ pub enum MessageType {
     FeeFilter(Message<feefilter::MessageFeeFilter>),
     SendHeaders(Message<sendheaders::MessageSendHeaders>),
     Inv(Message<inv::MessageInv>),
+    GetData(Message<getdata::MessageGetData>),
     GetBlocks(Message<getblocks::MessageGetBlocks>),
+    NotFound(Message<notfound::MessageNotFound>),
 }
 
 pub trait MessageCommand {
@@ -200,6 +205,12 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     } else if name == "getblocks" {
         let command = getblocks::MessageGetBlocks::from_bytes(&payload);
         message = MessageType::GetBlocks(Message { magic, command });
+    } else if name == "getdata" {
+        let command = getdata::MessageGetData::from_bytes(&payload);
+        message = MessageType::GetData(Message { magic, command });
+    } else if name == "notfound" {
+        let command = notfound::MessageNotFound::from_bytes(&payload);
+        message = MessageType::NotFound(Message { magic, command });
     } else {
         return Err(ParseError::UnknownMessage(name.clone()));
     }
