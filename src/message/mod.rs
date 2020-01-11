@@ -54,7 +54,11 @@ pub trait MessageCommand {
     fn from_bytes(_: &[u8]) -> Self;
     fn length(&self) -> u32;
     fn name(&self) -> [u8; 12];
-    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>);
+    fn handle(
+        &self,
+        state: network::ConnectionState,
+        t_cw: &mpsc::Sender<Vec<u8>>,
+    ) -> network::ConnectionState;
 }
 
 #[derive(Debug, PartialEq)]
@@ -251,7 +255,13 @@ mod tests {
             }
         }
 
-        fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {}
+        fn handle(
+            &self,
+            state: network::ConnectionState,
+            _: &mpsc::Sender<Vec<u8>>,
+        ) -> network::ConnectionState {
+            state
+        }
     }
 
     impl MessageMock {

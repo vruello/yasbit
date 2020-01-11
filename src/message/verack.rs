@@ -2,6 +2,7 @@ use std::sync::mpsc;
 
 use crate::message;
 use crate::message::MessageCommand;
+use crate::network;
 
 const NAME: &str = "verack";
 
@@ -30,7 +31,17 @@ impl message::MessageCommand for MessageVerack {
         MessageVerack {}
     }
 
-    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {}
+    fn handle(
+        &self,
+        state: network::ConnectionState,
+        _: &mpsc::Sender<Vec<u8>>,
+    ) -> network::ConnectionState {
+        match state {
+            network::ConnectionState::VER_SENT => network::ConnectionState::VERACK_RECEIVED,
+            network::ConnectionState::VER_RECEIVED => network::ConnectionState::ESTABLISHED,
+            _ => panic!("Received unexpected verack message"),
+        }
+    }
 }
 
 impl MessageVerack {

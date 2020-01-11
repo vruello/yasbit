@@ -2,6 +2,7 @@ use std::sync::mpsc;
 
 use crate::message;
 use crate::message::MessageCommand;
+use crate::network;
 use crate::utils;
 
 const NAME: &str = "ping";
@@ -34,11 +35,16 @@ impl message::MessageCommand for MessagePing {
         MessagePing { nonce }
     }
 
-    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {
+    fn handle(
+        &self,
+        state: network::ConnectionState,
+        t_cw: &mpsc::Sender<Vec<u8>>,
+    ) -> network::ConnectionState {
         let pong = message::pong::MessagePong::new(self.nonce);
         println!("Sending pong message: {:?}", pong);
         let message = message::Message::new(message::MAGIC_MAIN, pong);
         t_cw.send(message.bytes()).unwrap();
+        state
     }
 }
 

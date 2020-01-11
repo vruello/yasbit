@@ -56,7 +56,13 @@ impl message::MessageCommand for MessageAddr {
         MessageAddr { addr_list }
     }
 
-    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {}
+    fn handle(
+        &self,
+        state: network::ConnectionState,
+        _: &mpsc::Sender<Vec<u8>>,
+    ) -> network::ConnectionState {
+        state
+    }
 }
 
 impl MessageAddr {

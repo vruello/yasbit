@@ -2,6 +2,7 @@ use std::sync::mpsc;
 
 use crate::message;
 use crate::message::MessageCommand;
+use crate::network;
 
 const NAME: &str = "getaddr";
 
@@ -32,7 +33,13 @@ impl message::MessageCommand for MessageGetAddr {
         MessageGetAddr {}
     }
 
-    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {}
+    fn handle(
+        &self,
+        state: network::ConnectionState,
+        _: &mpsc::Sender<Vec<u8>>,
+    ) -> network::ConnectionState {
+        state
+    }
 }
 
 impl MessageGetAddr {

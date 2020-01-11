@@ -118,11 +118,22 @@ impl message::MessageCommand for MessageVersion {
         }
     }
 
-    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {
+    fn handle(
+        &self,
+        state: network::ConnectionState,
+        t_cw: &mpsc::Sender<Vec<u8>>,
+    ) -> network::ConnectionState {
+        // TODO: Verify validity of this message before sending ack
         let verack = message::verack::MessageVerack::new();
         println!("Sending verak message: {:?}", verack);
         let message = message::Message::new(message::MAGIC_MAIN, verack);
         t_cw.send(message.bytes()).unwrap();
+
+        match state {
+            network::ConnectionState::VER_SENT => network::ConnectionState::VER_RECEIVED,
+            network::ConnectionState::VERACK_RECEIVED => network::ConnectionState::ESTABLISHED,
+            _ => panic!("Received unexpected version message"),
+        }
     }
 }
 

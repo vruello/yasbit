@@ -6,6 +6,7 @@ use crate::crypto;
 use crate::message;
 use crate::message::inv_base::*;
 use crate::message::MessageCommand;
+use crate::network;
 use crate::utils;
 use crate::variable_integer::VariableInteger;
 
@@ -39,7 +40,11 @@ impl message::MessageCommand for MessageInv {
         }
     }
 
-    fn handle(&self, t_cw: &mpsc::Sender<Vec<u8>>) {
+    fn handle(
+        &self,
+        state: network::ConnectionState,
+        _: &mpsc::Sender<Vec<u8>>,
+    ) -> network::ConnectionState {
         for inv_vect in self.base.inventory.iter() {
             println!(
                 "{} {}",
@@ -47,6 +52,7 @@ impl message::MessageCommand for MessageInv {
                 hex::encode(inv_vect.hash)
             );
         }
+        state
     }
 }
 
