@@ -1,10 +1,11 @@
+use std::io::Write;
 use std::net;
-use std::sync::mpsc;
 
 use crate::message;
 use crate::message::MessageCommand;
 use crate::network;
 use crate::network::NetAddrBase;
+use crate::node;
 use crate::utils;
 use crate::variable_integer::VariableInteger;
 
@@ -120,18 +121,19 @@ impl message::MessageCommand for MessageVersion {
 
     fn handle(
         &self,
-        state: network::ConnectionState,
-        t_cw: &mpsc::Sender<Vec<u8>>,
-    ) -> network::ConnectionState {
+        state: node::ConnectionState,
+        mut stream: net::TcpStream,
+    ) -> node::ConnectionState {
         // TODO: Verify validity of this message before sending ack
         let verack = message::verack::MessageVerack::new();
         println!("Sending verak message: {:?}", verack);
         let message = message::Message::new(message::MAGIC_MAIN, verack);
-        t_cw.send(message.bytes()).unwrap();
+        stream.write(&message.bytes()).unwrap();
+        stream.flush().unwrap();
 
         match state {
-            network::ConnectionState::VER_SENT => network::ConnectionState::VER_RECEIVED,
-            network::ConnectionState::VERACK_RECEIVED => network::ConnectionState::ESTABLISHED,
+            node::ConnectionState::VER_SENT => node::ConnectionState::VER_RECEIVED,
+            node::ConnectionState::VERACK_RECEIVED => node::ConnectionState::ESTABLISHED,
             _ => panic!("Received unexpected version message"),
         }
     }

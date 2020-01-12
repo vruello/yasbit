@@ -1,12 +1,12 @@
 extern crate hex;
 
-use std::sync::mpsc;
+use std::net;
 
 use crate::crypto;
 use crate::message;
 use crate::message::inv_base::*;
 use crate::message::MessageCommand;
-use crate::network;
+use crate::node;
 use crate::utils;
 use crate::variable_integer::VariableInteger;
 
@@ -40,11 +40,7 @@ impl message::MessageCommand for MessageGetData {
         }
     }
 
-    fn handle(
-        &self,
-        state: network::ConnectionState,
-        _: &mpsc::Sender<Vec<u8>>,
-    ) -> network::ConnectionState {
+    fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
         for inv_vect in self.base.inventory.iter() {
             println!(
                 "{} {}",

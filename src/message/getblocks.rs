@@ -1,9 +1,9 @@
-use std::sync::mpsc;
+use std::net;
 
 use crate::crypto;
 use crate::message;
 use crate::message::MessageCommand;
-use crate::network;
+use crate::node;
 use crate::utils;
 use crate::variable_integer::VariableInteger;
 
@@ -83,11 +83,7 @@ impl message::MessageCommand for MessageGetBlocks {
         }
     }
 
-    fn handle(
-        &self,
-        state: network::ConnectionState,
-        _: &mpsc::Sender<Vec<u8>>,
-    ) -> network::ConnectionState {
+    fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
         state
     }
 }

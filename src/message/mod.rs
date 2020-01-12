@@ -1,7 +1,7 @@
-use std::sync::mpsc;
+use std::net;
 
 use crate::crypto;
-use crate::network;
+use crate::node;
 use crate::utils;
 
 pub mod addr;
@@ -54,11 +54,8 @@ pub trait MessageCommand {
     fn from_bytes(_: &[u8]) -> Self;
     fn length(&self) -> u32;
     fn name(&self) -> [u8; 12];
-    fn handle(
-        &self,
-        state: network::ConnectionState,
-        t_cw: &mpsc::Sender<Vec<u8>>,
-    ) -> network::ConnectionState;
+    fn handle(&self, state: node::ConnectionState, stream: net::TcpStream)
+        -> node::ConnectionState;
 }
 
 #[derive(Debug, PartialEq)]
@@ -255,11 +252,7 @@ mod tests {
             }
         }
 
-        fn handle(
-            &self,
-            state: network::ConnectionState,
-            _: &mpsc::Sender<Vec<u8>>,
-        ) -> network::ConnectionState {
+        fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
             state
         }
     }

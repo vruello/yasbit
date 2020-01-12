@@ -1,10 +1,10 @@
 use std::net;
-use std::sync::mpsc;
 
 use crate::message;
 use crate::message::MessageCommand;
 use crate::network;
 use crate::network::NetAddrBase;
+use crate::node;
 use crate::variable_integer::VariableInteger;
 
 const NAME: &str = "addr";
@@ -56,11 +56,7 @@ impl message::MessageCommand for MessageAddr {
         MessageAddr { addr_list }
     }
 
-    fn handle(
-        &self,
-        state: network::ConnectionState,
-        _: &mpsc::Sender<Vec<u8>>,
-    ) -> network::ConnectionState {
+    fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
         state
     }
 }

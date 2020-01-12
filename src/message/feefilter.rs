@@ -1,8 +1,8 @@
-use std::sync::mpsc;
+use std::net;
 
 use crate::message;
 use crate::message::MessageCommand;
-use crate::network;
+use crate::node;
 use crate::utils;
 
 const NAME: &str = "feefilter";
@@ -35,11 +35,7 @@ impl message::MessageCommand for MessageFeeFilter {
         MessageFeeFilter { feerate }
     }
 
-    fn handle(
-        &self,
-        state: network::ConnectionState,
-        _: &mpsc::Sender<Vec<u8>>,
-    ) -> network::ConnectionState {
+    fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
         state
     }
 }

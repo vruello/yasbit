@@ -1,8 +1,9 @@
-use std::sync::mpsc;
+use std::io::Write;
+use std::net;
 
 use crate::message;
 use crate::message::MessageCommand;
-use crate::network;
+use crate::node;
 use crate::utils;
 
 const NAME: &str = "ping";
@@ -37,13 +38,14 @@ impl message::MessageCommand for MessagePing {
 
     fn handle(
         &self,
-        state: network::ConnectionState,
-        t_cw: &mpsc::Sender<Vec<u8>>,
-    ) -> network::ConnectionState {
+        state: node::ConnectionState,
+        mut stream: net::TcpStream,
+    ) -> node::ConnectionState {
         let pong = message::pong::MessagePong::new(self.nonce);
         println!("Sending pong message: {:?}", pong);
         let message = message::Message::new(message::MAGIC_MAIN, pong);
-        t_cw.send(message.bytes()).unwrap();
+        stream.write(&message.bytes()).unwrap();
+        stream.flush().unwrap();
         state
     }
 }
