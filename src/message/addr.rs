@@ -1,5 +1,3 @@
-use std::net;
-
 use crate::message;
 use crate::message::MessageCommand;
 use crate::network;
@@ -56,9 +54,7 @@ impl message::MessageCommand for MessageAddr {
         MessageAddr { addr_list }
     }
 
-    fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
-        state
-    }
+    fn handle(&self, node: &mut node::Node) {}
 }
 
 impl MessageAddr {

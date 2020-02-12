@@ -1,5 +1,4 @@
 use std::io::Write;
-use std::net;
 
 use crate::message;
 use crate::message::MessageCommand;
@@ -36,17 +35,13 @@ impl message::MessageCommand for MessagePing {
         MessagePing { nonce }
     }
 
-    fn handle(
-        &self,
-        state: node::ConnectionState,
-        mut stream: net::TcpStream,
-    ) -> node::ConnectionState {
+    fn handle(&self, node: &mut node::Node) {
         let pong = message::pong::MessagePong::new(self.nonce);
         println!("Sending pong message: {:?}", pong);
         let message = message::Message::new(message::MAGIC_MAIN, pong);
+        let stream = node.stream();
         stream.write(&message.bytes()).unwrap();
         stream.flush().unwrap();
-        state
     }
 }
 

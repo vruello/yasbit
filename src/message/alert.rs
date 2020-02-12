@@ -1,5 +1,3 @@
-use std::net;
-
 use crate::crypto;
 use crate::message;
 use crate::message::MessageCommand;
@@ -195,9 +193,7 @@ impl message::MessageCommand for MessageAlert {
         }
     }
 
-    fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
-        state
-    }
+    fn handle(&self, node: &mut node::Node) {}
 }
 
 impl MessageAlert {

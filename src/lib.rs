@@ -18,13 +18,13 @@ use std::thread;
 pub fn run() {
     // TODO : Load peers to communicate with
     let addrs = ["5.43.228.99:8333", "5.8.18.29:8333"];
-    let mut nodes = vec![];
+    let mut nodes: Vec<node::NodeHandle> = vec![];
     let (response_sender, response_receiver) = mpsc::channel();
 
     for addr in &addrs {
         let (command_sender, command_receiver) = mpsc::channel();
         let node_id = nodes.len();
-        nodes.push(command_sender);
+        nodes.push(node::NodeHandle::new(node_id, command_sender));
         let node_response_sender = response_sender.clone();
         let node_addr = addr.parse().unwrap();
         thread::spawn(move || {
@@ -35,15 +35,27 @@ pub fn run() {
     loop {
         let response = response_receiver.recv().unwrap();
 
-        match response {
-            node::NodeResponse::Ok(node_id) => println!("Node {} sent Ok", node_id),
-            node::NodeResponse::Error(node_id) => println!("Node {} sent Error", node_id),
+        let node_handle = get_node_handle(&nodes, &response.node_id);
+        println!("Received response from node {:?}", node_handle);
+
+        match response.content {
+            node::NodeResponseContent::UpdateState(state) => (),
             _ => panic!("Unknown message from thread"),
         }
     }
 }
 
-pub fn start_node(
+fn get_node_handle<'a>(
+    nodes: &'a [node::NodeHandle],
+    node_id: &node::NodeId,
+) -> Option<&'a node::NodeHandle> {
+    // FIXME
+    // This is a dumb implementation. Maybe node_id should not be
+    // the index of the node in nodes...
+    nodes.iter().nth(*node_id)
+}
+
+fn start_node(
     node_id: usize,
     socket_addr: net::SocketAddr,
     command_receiver: mpsc::Receiver<node::NodeCommand>,

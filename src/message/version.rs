@@ -1,5 +1,4 @@
 use std::io::Write;
-use std::net;
 
 use crate::message;
 use crate::message::MessageCommand;
@@ -119,23 +118,27 @@ impl message::MessageCommand for MessageVersion {
         }
     }
 
-    fn handle(
-        &self,
-        state: node::ConnectionState,
-        mut stream: net::TcpStream,
-    ) -> node::ConnectionState {
+    fn handle(&self, node: &mut node::Node) {
         // TODO: Verify validity of this message before sending ack
         let verack = message::verack::MessageVerack::new();
         println!("Sending verak message: {:?}", verack);
         let message = message::Message::new(message::MAGIC_MAIN, verack);
+        let stream = node.stream();
         stream.write(&message.bytes()).unwrap();
         stream.flush().unwrap();
 
-        match state {
+        let new_state = match node.connection_state() {
             node::ConnectionState::VER_SENT => node::ConnectionState::VER_RECEIVED,
-            node::ConnectionState::VERACK_RECEIVED => node::ConnectionState::ESTABLISHED,
+            node::ConnectionState::VERACK_RECEIVED => {
+                node.send_response(node::NodeResponseContent::UpdateState(
+                    node::NodeState::CONNECTION_ESTABLISHED,
+                ))
+                .unwrap();
+                node::ConnectionState::ESTABLISHED
+            }
             _ => panic!("Received unexpected version message"),
-        }
+        };
+        node.set_connection_state(new_state);
     }
 }
 

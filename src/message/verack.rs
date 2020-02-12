@@ -1,5 +1,3 @@
-use std::net;
-
 use crate::message;
 use crate::message::MessageCommand;
 use crate::node;
@@ -31,12 +29,19 @@ impl message::MessageCommand for MessageVerack {
         MessageVerack {}
     }
 
-    fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
-        match state {
+    fn handle(&self, node: &mut node::Node) {
+        let new_state = match node.connection_state() {
             node::ConnectionState::VER_SENT => node::ConnectionState::VERACK_RECEIVED,
-            node::ConnectionState::VER_RECEIVED => node::ConnectionState::ESTABLISHED,
+            node::ConnectionState::VER_RECEIVED => {
+                node.send_response(node::NodeResponseContent::UpdateState(
+                    node::NodeState::CONNECTION_ESTABLISHED,
+                ))
+                .unwrap();
+                node::ConnectionState::ESTABLISHED
+            }
             _ => panic!("Received unexpected verack message"),
-        }
+        };
+        node.set_connection_state(new_state);
     }
 }
 

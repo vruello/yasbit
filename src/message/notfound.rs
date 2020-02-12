@@ -1,7 +1,5 @@
 extern crate hex;
 
-use std::net;
-
 use crate::crypto;
 use crate::message;
 use crate::message::inv_base::*;
@@ -40,7 +38,7 @@ impl message::MessageCommand for MessageNotFound {
         }
     }
 
-    fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
+    fn handle(&self, node: &mut node::Node) {
         for inv_vect in self.base.inventory.iter() {
             println!(
                 "{} {}",
@@ -48,7 +46,6 @@ impl message::MessageCommand for MessageNotFound {
                 hex::encode(inv_vect.hash)
             );
         }
-        state
     }
 }
 

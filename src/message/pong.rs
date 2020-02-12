@@ -1,5 +1,3 @@
-use std::net;
-
 use crate::message;
 use crate::message::MessageCommand;
 use crate::node;
@@ -35,9 +33,7 @@ impl message::MessageCommand for MessagePong {
         MessagePong { nonce }
     }
 
-    fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
-        state
-    }
+    fn handle(&self, node: &mut node::Node) {}
 }
 
 impl MessagePong {

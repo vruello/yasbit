@@ -1,5 +1,3 @@
-use std::net;
-
 use crate::crypto;
 use crate::node;
 use crate::utils;
@@ -54,8 +52,7 @@ pub trait MessageCommand {
     fn from_bytes(_: &[u8]) -> Self;
     fn length(&self) -> u32;
     fn name(&self) -> [u8; 12];
-    fn handle(&self, state: node::ConnectionState, stream: net::TcpStream)
-        -> node::ConnectionState;
+    fn handle(&self, node: &mut node::Node);
 }
 
 #[derive(Debug, PartialEq)]
