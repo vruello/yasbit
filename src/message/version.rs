@@ -172,6 +172,7 @@ impl MessageVersion {
 mod tests {
 
     use super::*;
+    use std::net;
 
     #[test]
     fn test_message_version() {

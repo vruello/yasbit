@@ -66,6 +66,7 @@ impl MessageAddr {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net;
 
     #[test]
     fn test_message_addr() {

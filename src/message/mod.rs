@@ -249,9 +249,7 @@ mod tests {
             }
         }
 
-        fn handle(&self, state: node::ConnectionState, _: net::TcpStream) -> node::ConnectionState {
-            state
-        }
+        fn handle(&self, node: &mut node::Node) {}
     }
 
     impl MessageMock {
