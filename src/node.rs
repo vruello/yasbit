@@ -23,28 +23,59 @@ impl NodeHandle {
         NodeHandle {
             id,
             command_sender,
-            state: NodeState::CONNECTING,
+            state: NodeState::CONNECTING(ConnectionState::CLOSED),
         }
     }
 
     pub fn send(&self, command: NodeCommand) {
         self.command_sender.send(command).unwrap();
     }
+
+    pub fn state(&self) -> &NodeState {
+        &self.state
+    }
+
+    pub fn set_state(&mut self, state: NodeState) {
+        println!("Update state: {:?} => {:?}", self.state, state);
+        match &self.state {
+            NodeState::CONNECTING(conn_state) => match state {
+                NodeState::CONNECTION_ESTABLISHED => {
+                    println!("Send message getaddr");
+                    self.command_sender
+                        .send(NodeCommand::SendMessage(message::MessageType::GetAddr(
+                            message::Message::new(
+                                message::MAGIC_MAIN,
+                                message::getaddr::MessageGetAddr::new(),
+                            ),
+                        )))
+                        .unwrap();
+                    println!("Message sent");
+                }
+                _ => (),
+            },
+            _ => (),
+        };
+        self.state = state;
+    }
 }
 
 #[derive(Debug)]
 pub enum NodeState {
-    CONNECTING,
+    CONNECTING(ConnectionState),
     CONNECTION_ESTABLISHED,
 }
 
-pub enum NodeCommand {}
+pub enum NodeCommand {
+    SendMessage(message::MessageType),
+}
 
+#[derive(Debug)]
 pub struct NodeResponse {
     pub node_id: NodeId,
     pub content: NodeResponseContent,
 }
 
+#[derive(Debug)]
 pub enum NodeResponseContent {
     UpdateState(NodeState),
 }
@@ -148,62 +179,66 @@ impl Node {
     pub fn handle_message(&mut self, message_type: message::MessageType) {
         match message_type {
             message::MessageType::Alert(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::Version(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::Verack(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::GetAddr(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::Addr(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::Ping(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::Pong(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::GetHeaders(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::FeeFilter(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::SendHeaders(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::Inv(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::GetBlocks(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::GetData(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
             message::MessageType::NotFound(mess) => {
-                display_message(&mess.command);
+                display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
         }
+    }
+
+    pub fn id(&self) -> &NodeId {
+        &self.node_id
     }
 
     pub fn stream(&mut self) -> &mut net::TcpStream {
@@ -295,9 +330,10 @@ fn reader(mut stream: net::TcpStream, t_rc: mpsc::Sender<CommandOrMessageType>) 
     }
 }
 
-fn display_message<T: message::MessageCommand + std::fmt::Debug>(command: &T) {
+fn display_message<T: message::MessageCommand + std::fmt::Debug>(node_id: &NodeId, command: &T) {
     println!(
-        "Received {} message: {:?}",
+        "[{}] Received {} message: {:?}",
+        node_id,
         std::str::from_utf8(&command.name()).unwrap(),
         command
     );

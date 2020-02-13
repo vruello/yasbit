@@ -121,7 +121,7 @@ impl message::MessageCommand for MessageVersion {
     fn handle(&self, node: &mut node::Node) {
         // TODO: Verify validity of this message before sending ack
         let verack = message::verack::MessageVerack::new();
-        println!("Sending verak message: {:?}", verack);
+        println!("[{}] Sending verak message: {:?}", node.id(), verack);
         let message = message::Message::new(message::MAGIC_MAIN, verack);
         let stream = node.stream();
         stream.write(&message.bytes()).unwrap();

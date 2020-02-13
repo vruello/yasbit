@@ -35,7 +35,7 @@ impl message::MessageCommand for MessageGetAddr {
 }
 
 impl MessageGetAddr {
-    fn new() -> Self {
+    pub fn new() -> Self {
         MessageGetAddr {}
     }
 }

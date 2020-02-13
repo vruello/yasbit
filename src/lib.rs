@@ -35,24 +35,31 @@ pub fn run() {
     loop {
         let response = response_receiver.recv().unwrap();
 
-        let node_handle = get_node_handle(&nodes, &response.node_id);
+        let node_handle = match get_node_handle(&mut nodes, &response.node_id) {
+            Some(handle) => handle,
+            None => {
+                println!("Can not get node_handle: {:?}", response);
+                continue;
+            }
+        };
+
         println!("Received response from node {:?}", node_handle);
 
         match response.content {
-            node::NodeResponseContent::UpdateState(state) => (),
+            node::NodeResponseContent::UpdateState(state) => node_handle.set_state(state),
             _ => panic!("Unknown message from thread"),
         }
     }
 }
 
 fn get_node_handle<'a>(
-    nodes: &'a [node::NodeHandle],
+    nodes: &'a mut Vec<node::NodeHandle>,
     node_id: &node::NodeId,
-) -> Option<&'a node::NodeHandle> {
+) -> Option<&'a mut node::NodeHandle> {
     // FIXME
     // This is a dumb implementation. Maybe node_id should not be
     // the index of the node in nodes...
-    nodes.iter().nth(*node_id)
+    nodes.iter_mut().nth(*node_id)
 }
 
 fn start_node(
