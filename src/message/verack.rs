@@ -33,10 +33,8 @@ impl message::MessageCommand for MessageVerack {
         let new_state = match node.connection_state() {
             node::ConnectionState::VER_SENT => node::ConnectionState::VERACK_RECEIVED,
             node::ConnectionState::VER_RECEIVED => {
-                node.send_response(node::NodeResponseContent::UpdateState(
-                    node::NodeState::CONNECTION_ESTABLISHED,
-                ))
-                .unwrap();
+                node.send_response(node::NodeResponseContent::Connected)
+                    .unwrap();
                 node::ConnectionState::ESTABLISHED
             }
             _ => panic!("Received unexpected verack message"),

@@ -1,26 +1,80 @@
-use crate::crypto::{hash32, Hash32, Hashable};
+use crate::crypto::{bytes_to_hash32, hash32, hash32_to_bytes, Hash32, Hashable};
 use crate::merkle_tree;
 use crate::transaction::Transaction;
+use crate::utils;
 
 /// A block is represented here
 /// See https://en.bitcoin.it/wiki/Block
 #[derive(Debug)]
 pub struct Block {
     magic_no: u32, // should always be 0xD9B4BEF9
-    header: BlockHeader,
+    pub header: BlockHeader,
     transactions: Vec<Box<Transaction>>,
 }
 
 /// A block header is represented here
 /// See https://en.bitcoin.it/wiki/Block_hashing_algorithm
-#[derive(Debug)]
-struct BlockHeader {
+#[derive(Debug, PartialEq, Clone)]
+pub struct BlockHeader {
     version: u32,             // block version number
     hash_prev_block: Hash32,  // hash of previous block header
     hash_merkle_root: Hash32, // hash based on all transactions in the block
     time: u32,                // block timestamp
     bits: u32,                // current target, must be represented in 32 bits
     nonce: u32,               // initialized to 0
+}
+
+impl BlockHeader {
+    pub fn bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+
+        bytes.extend_from_slice(&self.version.to_le_bytes());
+        bytes.extend_from_slice(&hash32_to_bytes(&self.hash_prev_block));
+        bytes.extend_from_slice(&hash32_to_bytes(&self.hash_merkle_root));
+        bytes.extend_from_slice(&self.time.to_le_bytes());
+        bytes.extend_from_slice(&self.bits.to_le_bytes());
+        bytes.extend_from_slice(&self.nonce.to_le_bytes());
+
+        bytes
+    }
+
+    pub fn length() -> usize {
+        80
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let mut index = 0;
+        let mut next_size = 4;
+        let version =
+            u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+
+        next_size = 32;
+        let hash_prev_block =
+            utils::clone_into_array(&bytes_to_hash32(&bytes[index..(index + next_size)]).unwrap());
+        index += next_size;
+
+        let hash_merkle_root =
+            utils::clone_into_array(&bytes_to_hash32(&bytes[index..(index + next_size)]).unwrap());
+        index += next_size;
+
+        next_size = 4;
+        let time = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+        let bits = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+        let nonce = u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+
+        Self {
+            version,
+            hash_prev_block,
+            hash_merkle_root,
+            time,
+            bits,
+            nonce,
+        }
+    }
 }
 
 impl Block {
@@ -112,6 +166,28 @@ impl Hashable for Block {
     }
 }
 
+pub fn genesis_block() -> Block {
+    let mut tx = Transaction::new();
+    // Coinbase generation input
+    tx.add_input(
+        [0 as u8; 32],
+        0xffffffff,
+        hex::decode("04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73").unwrap());
+    // Output 50 BTC
+    tx.add_output(
+        5_000_000_000,
+        hex::decode("4104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac").unwrap());
+
+    Block::new(
+        1,
+        [0; 32],    // prev block
+        1231006505, // time
+        2083236893, // nonce
+        486604799,  // bits
+        Box::new(tx),
+    )
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -120,27 +196,8 @@ mod tests {
     #[test]
     /// The test is based on
     /// https://www.blockchain.com/fr/btc/block/000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
-    fn genesis_block() {
-        let mut tx = Transaction::new();
-        // Coinbase generation input
-        tx.add_input(
-            [0 as u8; 32],
-            0xffffffff,
-            hex::decode("04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73").unwrap());
-        // Output 50 BTC
-        tx.add_output(
-            5_000_000_000,
-            hex::decode("4104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac").unwrap());
-
-        let block = Block::new(
-            1,
-            [0; 32],    // prev block
-            1231006505, // time
-            2083236893, // nonce
-            486604799,  // bits
-            Box::new(tx),
-        );
-
+    fn genesis_block_hash() {
+        let block = genesis_block();
         assert_eq!(
             "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
             hex::encode(block.hash())

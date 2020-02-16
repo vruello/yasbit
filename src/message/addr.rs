@@ -54,7 +54,9 @@ impl message::MessageCommand for MessageAddr {
         MessageAddr { addr_list }
     }
 
-    fn handle(&self, node: &mut node::Node) {}
+    fn handle(&self, node: &mut node::Node) {
+        node.send_response(node::NodeResponseContent::Addrs(self.addr_list.clone()));
+    }
 }
 
 impl MessageAddr {

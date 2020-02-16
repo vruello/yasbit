@@ -36,25 +36,7 @@ impl NodeHandle {
     }
 
     pub fn set_state(&mut self, state: NodeState) {
-        println!("Update state: {:?} => {:?}", self.state, state);
-        match &self.state {
-            NodeState::CONNECTING(conn_state) => match state {
-                NodeState::CONNECTION_ESTABLISHED => {
-                    println!("Send message getaddr");
-                    self.command_sender
-                        .send(NodeCommand::SendMessage(message::MessageType::GetAddr(
-                            message::Message::new(
-                                message::MAGIC_MAIN,
-                                message::getaddr::MessageGetAddr::new(),
-                            ),
-                        )))
-                        .unwrap();
-                    println!("Message sent");
-                }
-                _ => (),
-            },
-            _ => (),
-        };
+        log::debug!("Update state: {:?} => {:?}", self.state, state);
         self.state = state;
     }
 }
@@ -62,9 +44,11 @@ impl NodeHandle {
 #[derive(Debug)]
 pub enum NodeState {
     CONNECTING(ConnectionState),
-    CONNECTION_ESTABLISHED,
+    UPDATING_PEERS,
+    UPDATING_BLOCKS,
 }
 
+#[derive(Debug)]
 pub enum NodeCommand {
     SendMessage(message::MessageType),
 }
@@ -77,7 +61,8 @@ pub struct NodeResponse {
 
 #[derive(Debug)]
 pub enum NodeResponseContent {
-    UpdateState(NodeState),
+    Connected,
+    Addrs(Vec<network::NetAddr>),
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -151,9 +136,10 @@ impl Node {
             0,
             true,
         );
-        println!(
+        log::debug!(
             "[{}]: Sending version message : {:?}",
-            self.node_id, version
+            self.node_id,
+            version
         );
         let message = message::Message::new(message::MAGIC_MAIN, version);
         self.stream.write(&message.bytes()).unwrap();
@@ -170,8 +156,18 @@ impl Node {
                     self.handle_message(message_type);
                 }
                 CommandOrMessageType::Command(node_command) => {
-                    // Do something
+                    self.handle_command(node_command);
                 }
+            }
+        }
+    }
+
+    pub fn handle_command(&mut self, node_command: NodeCommand) {
+        match node_command {
+            NodeCommand::SendMessage(message) => {
+                log::debug!("[{}] Send message: {:?}", self.node_id, &message);
+                self.stream.write(&message.bytes()).unwrap();
+                self.stream.flush().unwrap();
             }
         }
     }
@@ -234,6 +230,10 @@ impl Node {
                 display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }
+            message::MessageType::Headers(mess) => {
+                display_message(&self.node_id, &mess.command);
+                mess.command.handle(self)
+            }
         }
     }
 
@@ -282,9 +282,8 @@ fn reader(mut stream: net::TcpStream, t_rc: mpsc::Sender<CommandOrMessageType>) 
     let mut remaining_bytes = 0;
     loop {
         let received_bytes = stream.read(&mut buffer).unwrap();
-        // println!("{} bytes received", received_bytes);
         if received_bytes == 0 {
-            println!("Remote {:?} closed connection", stream.peer_addr().unwrap());
+            log::info!("Remote {:?} closed connection", stream.peer_addr().unwrap());
             break;
         }
         let mut index = 0;
@@ -312,7 +311,11 @@ fn reader(mut stream: net::TcpStream, t_rc: mpsc::Sender<CommandOrMessageType>) 
                     remaining_bytes = needed;
                 }
                 Err(err) => {
-                    println!("Error {:?}! Message received: {:?}", &err, &buffer.to_vec());
+                    log::warn!(
+                        "Could not parse received message: {:?}.\n Message received: {:?}",
+                        &err,
+                        bytes
+                    );
                 }
             }
 
@@ -331,7 +334,7 @@ fn reader(mut stream: net::TcpStream, t_rc: mpsc::Sender<CommandOrMessageType>) 
 }
 
 fn display_message<T: message::MessageCommand + std::fmt::Debug>(node_id: &NodeId, command: &T) {
-    println!(
+    log::debug!(
         "[{}] Received {} message: {:?}",
         node_id,
         std::str::from_utf8(&command.name()).unwrap(),

@@ -40,7 +40,7 @@ impl message::MessageCommand for MessageGetData {
 
     fn handle(&self, node: &mut node::Node) {
         for inv_vect in self.base.inventory.iter() {
-            println!(
+            log::trace!(
                 "{} {}",
                 hash_type_to_str(inv_vect.hash_type),
                 hex::encode(inv_vect.hash)

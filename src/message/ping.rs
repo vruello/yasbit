@@ -37,7 +37,7 @@ impl message::MessageCommand for MessagePing {
 
     fn handle(&self, node: &mut node::Node) {
         let pong = message::pong::MessagePong::new(self.nonce);
-        println!("Sending pong message: {:?}", pong);
+        log::debug!("[{}] Sending pong message: {:?}", node.id(), pong);
         let message = message::Message::new(message::MAGIC_MAIN, pong);
         let stream = node.stream();
         stream.write(&message.bytes()).unwrap();

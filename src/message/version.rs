@@ -121,7 +121,7 @@ impl message::MessageCommand for MessageVersion {
     fn handle(&self, node: &mut node::Node) {
         // TODO: Verify validity of this message before sending ack
         let verack = message::verack::MessageVerack::new();
-        println!("[{}] Sending verak message: {:?}", node.id(), verack);
+        log::debug!("[{}] Sending verak message: {:?}", node.id(), verack);
         let message = message::Message::new(message::MAGIC_MAIN, verack);
         let stream = node.stream();
         stream.write(&message.bytes()).unwrap();
@@ -130,13 +130,14 @@ impl message::MessageCommand for MessageVersion {
         let new_state = match node.connection_state() {
             node::ConnectionState::VER_SENT => node::ConnectionState::VER_RECEIVED,
             node::ConnectionState::VERACK_RECEIVED => {
-                node.send_response(node::NodeResponseContent::UpdateState(
-                    node::NodeState::CONNECTION_ESTABLISHED,
-                ))
-                .unwrap();
+                node.send_response(node::NodeResponseContent::Connected)
+                    .unwrap();
                 node::ConnectionState::ESTABLISHED
             }
-            _ => panic!("Received unexpected version message"),
+            _ => {
+                log::warn!("Received unexpected version message");
+                return;
+            }
         };
         node.set_connection_state(new_state);
     }

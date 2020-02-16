@@ -9,6 +9,7 @@ pub mod getaddr;
 pub mod getblocks;
 pub mod getdata;
 pub mod getheaders;
+pub mod headers;
 pub mod inv;
 pub mod inv_base;
 pub mod notfound;
@@ -45,6 +46,29 @@ pub enum MessageType {
     GetData(Message<getdata::MessageGetData>),
     GetBlocks(Message<getblocks::MessageGetBlocks>),
     NotFound(Message<notfound::MessageNotFound>),
+    Headers(Message<headers::MessageHeaders>),
+}
+
+impl MessageType {
+    pub fn bytes(self) -> Vec<u8> {
+        match self {
+            MessageType::Version(message) => message.bytes(),
+            MessageType::Alert(message) => message.bytes(),
+            MessageType::Verack(message) => message.bytes(),
+            MessageType::Addr(message) => message.bytes(),
+            MessageType::GetAddr(message) => message.bytes(),
+            MessageType::Ping(message) => message.bytes(),
+            MessageType::Pong(message) => message.bytes(),
+            MessageType::GetHeaders(message) => message.bytes(),
+            MessageType::FeeFilter(message) => message.bytes(),
+            MessageType::SendHeaders(message) => message.bytes(),
+            MessageType::Inv(message) => message.bytes(),
+            MessageType::GetData(message) => message.bytes(),
+            MessageType::GetBlocks(message) => message.bytes(),
+            MessageType::NotFound(message) => message.bytes(),
+            MessageType::Headers(message) => message.bytes(),
+        }
+    }
 }
 
 pub trait MessageCommand {
@@ -166,6 +190,7 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
         return Err(ParseError::InvalidChecksum);
     }
 
+    log::trace!("payload: {:?}", payload);
     let message;
     if name == "version" {
         let command = version::MessageVersion::from_bytes(&payload);
@@ -209,6 +234,9 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     } else if name == "notfound" {
         let command = notfound::MessageNotFound::from_bytes(&payload);
         message = MessageType::NotFound(Message { magic, command });
+    } else if name == "headers" {
+        let command = headers::MessageHeaders::from_bytes(&payload);
+        message = MessageType::Headers(Message { magic, command });
     } else {
         return Err(ParseError::UnknownMessage(name.clone()));
     }
