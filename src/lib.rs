@@ -7,6 +7,7 @@ mod message;
 mod network;
 mod node;
 mod script;
+mod storage;
 mod transaction;
 mod utils;
 mod variable_integer;
@@ -26,6 +27,13 @@ struct GlobalState {
 }
 
 pub fn run() {
+    // Initialize DBs
+    let mut storage = storage::Storage::new(
+        "/var/tmp/yasbit/blocks.db",
+        "/var/tmp/yasbit/transactions.db",
+    );
+
+    // Load peers
     let mut addrs = lookup_host("seed.bitcoin.sipa.be").unwrap();
     addrs.truncate(8);
 
