@@ -237,6 +237,26 @@ mod tests {
         );
 
         assert_eq!(block, Block::from_bytes(&block.bytes()));
+        assert_eq!(
+            "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+            hex::encode(block.header.hash_merkle_root)
+        );
+    }
+
+    #[test]
+    fn test_genesis_block_hash() {
+        let config = config::test_config();
+        let block = config.genesis_block;
+        assert_eq!(
+            "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943",
+            hex::encode(block.hash())
+        );
+
+        assert_eq!(block, Block::from_bytes(&block.bytes()));
+        assert_eq!(
+            "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+            hex::encode(block.header.hash_merkle_root)
+        );
     }
 
     #[test]
