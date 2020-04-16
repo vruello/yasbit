@@ -72,7 +72,12 @@ impl message::MessageCommand for MessageHeaders {
         Self { headers }
     }
 
-    fn handle(&self, node: &mut node::Node) {}
+    fn handle(&self, node: &mut node::Node) {
+        node.send_response(node::NodeResponseContent::Headers(
+            self.headers.iter().map(|x| x.header.clone()).collect(),
+        ))
+        .unwrap();
+    }
 }
 
 impl MessageHeaders {

@@ -1,12 +1,13 @@
 extern crate hex;
 
-use crate::crypto::{hash32, Hash32, Hashable};
+use crate::crypto::{bytes_to_hash32, hash32, hash32_to_bytes, Hash32, Hashable};
+use crate::utils;
 use crate::variable_integer::VariableInteger;
 
 /// A transaction is represented here
 /// See https://en.bitcoin.it/wiki/Transactions
 // FIXME Support flag and witnesses
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Transaction {
     version: u32,
     pub inputs: Vec<Box<TxInput>>,
@@ -14,7 +15,7 @@ pub struct Transaction {
     lock_time: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TxInput {
     tx: Hash32,
     index: u32,
@@ -25,7 +26,7 @@ pub struct TxInput {
 impl TxInput {
     fn bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(&self.tx);
+        bytes.extend_from_slice(&hash32_to_bytes(&self.tx));
 
         bytes.extend_from_slice(&self.index.to_le_bytes());
 
@@ -40,9 +41,44 @@ impl TxInput {
     pub fn sig(&self) -> Vec<u8> {
         self.script_sig.clone()
     }
+
+    fn from_bytes(bytes: &[u8]) -> (Self, usize) {
+        let mut index = 0;
+        let mut next_size = 32;
+
+        let tx =
+            utils::clone_into_array(&bytes_to_hash32(&bytes[index..(index + next_size)]).unwrap());
+        index += next_size;
+
+        next_size = 4;
+        let tx_index =
+            u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+
+        let (script_len, script_len_size) = VariableInteger::from_bytes(&bytes[index..]).unwrap();
+        index += script_len_size;
+
+        let script_sig = Vec::from(&bytes[index..(index + (script_len as usize))]);
+        index += script_len as usize;
+
+        next_size = 4;
+        let sequence =
+            u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+
+        (
+            TxInput {
+                tx,
+                index: tx_index,
+                script_sig,
+                sequence,
+            },
+            index,
+        )
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TxOutput {
     value: u64,
     script_pub_key: Vec<u8>,
@@ -62,6 +98,28 @@ impl TxOutput {
 
     pub fn pubkey(&self) -> Vec<u8> {
         self.script_pub_key.clone()
+    }
+
+    fn from_bytes(bytes: &[u8]) -> (Self, usize) {
+        let mut index = 0;
+        let mut next_size = 8;
+
+        let value = u64::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+
+        let (script_len, script_len_size) = VariableInteger::from_bytes(&bytes[index..]).unwrap();
+        index += script_len_size;
+
+        let script_pub_key = Vec::from(&bytes[index..(index + (script_len as usize))]);
+        index += script_len as usize;
+
+        (
+            TxOutput {
+                value,
+                script_pub_key,
+            },
+            index,
+        )
     }
 }
 
@@ -113,6 +171,51 @@ impl Transaction {
         bytes.extend_from_slice(&self.lock_time.to_le_bytes());
         bytes
     }
+
+    pub fn from_bytes(bytes: &[u8]) -> (Self, usize) {
+        let mut index = 0;
+        let mut next_size = 4;
+
+        let version =
+            u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+
+        let (tx_in_count, tx_in_count_size) = VariableInteger::from_bytes(&bytes[index..]).unwrap();
+        index += tx_in_count_size;
+
+        let mut inputs = Vec::new();
+        for _ in 0..tx_in_count {
+            let (input, size) = TxInput::from_bytes(&bytes[index..]);
+            index += size;
+            inputs.push(Box::new(input));
+        }
+
+        let (tx_out_count, tx_out_count_size) =
+            VariableInteger::from_bytes(&bytes[index..]).unwrap();
+        index += tx_out_count_size;
+
+        let mut outputs = Vec::new();
+        for _ in 0..tx_out_count {
+            let (output, size) = TxOutput::from_bytes(&bytes[index..]);
+            index += size;
+            outputs.push(Box::new(output));
+        }
+
+        next_size = 4;
+        let lock_time =
+            u32::from_le_bytes(utils::clone_into_array(&bytes[index..(index + next_size)]));
+        index += next_size;
+
+        (
+            Transaction {
+                version,
+                inputs,
+                outputs,
+                lock_time,
+            },
+            index,
+        )
+    }
 }
 
 impl Hashable for Transaction {
@@ -143,23 +246,17 @@ mod tests {
             "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
             hex::encode(tx.hash())
         );
+
+        let (deserialized, _size) = Transaction::from_bytes(&tx.bytes());
+        assert_eq!(tx, deserialized);
     }
 
     #[test]
     fn block_125552_60c25() {
         let mut tx = Transaction::new();
-        let mut prev_tx = [0; 32];
-        for (i, byte) in
-            hex::decode("738d466ff93e7857d07138b5a5a75e83a964e3c9977d2603308ecc9b667962ad")
-                .unwrap()
-                .iter()
-                .enumerate()
-        {
-            prev_tx[31 - i] = *byte;
-        }
 
         tx.add_input(
-            prev_tx,
+            utils::clone_into_array(&hex::decode("738d466ff93e7857d07138b5a5a75e83a964e3c9977d2603308ecc9b667962ad").unwrap()),
             0,
             hex::decode("4930460221009805aa00cb6f80ca984584d4ca40f637fc948e3dbe159ea5c4eb6941bf4eb763022100e1cc0852d3f6eb87839edca1f90169088ed3502d8cde2f495840acac69eefc9801410486477e6a23cb25c9a99f0c467c6fc86197e718ebfd41d1aef7cc3cbd75197c1f1aaba985b22b366a0729ccb8aa38277809d6d218cf4077ac9f29a953b5435222").unwrap());
 
@@ -178,5 +275,8 @@ mod tests {
             "60c25dda8d41f8d3d7d5c6249e2ea1b05a25bf7ae2ad6d904b512b31f997e1a1",
             hex::encode(tx.hash())
         );
+
+        let (deserialized, _size) = Transaction::from_bytes(&tx.bytes());
+        assert_eq!(tx, deserialized);
     }
 }

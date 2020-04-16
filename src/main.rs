@@ -5,7 +5,7 @@ extern crate simple_logger;
 
 fn main() {
     // Initialize logger
-    simple_logger::init().unwrap();
+    simple_logger::init_with_level(log::Level::Debug).unwrap();
 
     yasbit::run();
 }

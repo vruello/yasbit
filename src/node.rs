@@ -1,21 +1,31 @@
+use crate::block;
+use crate::crypto;
 use crate::message;
+use crate::message::inv_base::{InvVect, MSG_BLOCK};
 use crate::message::MessageCommand;
 use crate::network;
 use crate::rand::RngCore;
 
+use crate::crypto::Hashable;
+use std::cmp::min;
+use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::net;
+use std::rc::Rc;
 use std::sync::mpsc;
 use std::thread;
 use std::time::SystemTime;
 
 pub type NodeId = usize;
 
-#[derive(Debug)]
+const MAX_DOWNLOADING_BLOCKS: usize = 16;
+
+#[derive(Debug, Clone)]
 pub struct NodeHandle {
     id: NodeId,
     command_sender: mpsc::Sender<NodeCommand>,
     state: NodeState,
+    download_current: Vec<crypto::Hash32>,
 }
 
 impl NodeHandle {
@@ -24,6 +34,7 @@ impl NodeHandle {
             id,
             command_sender,
             state: NodeState::CONNECTING(ConnectionState::CLOSED),
+            download_current: Vec::new(),
         }
     }
 
@@ -39,9 +50,99 @@ impl NodeHandle {
         log::debug!("Update state: {:?} => {:?}", self.state, state);
         self.state = state;
     }
+
+    pub fn id(&self) -> NodeId {
+        self.id
+    }
+
+    pub fn mark_downloaded(&mut self, block: &block::Block) {
+        match self
+            .download_current
+            .iter()
+            .position(|elt| elt == &block.hash())
+        {
+            Some(index) => {
+                log::debug!("[{}] Found {:?} at index {}", self.id, &block.hash(), index);
+                self.download_current.swap_remove(index);
+            }
+            None => log::warn!("[{}] Block {:?} was not asked", self.id, block.hash()),
+        }
+    }
+
+    pub fn download_next(&mut self, download_queue: &mut VecDeque<crypto::Hash32>) -> bool {
+        match &self.state {
+            UPDATING_BLOCKS => (),
+            _ => {
+                log::warn!(
+                    "[{}] Not ready to download. Current state is {:?}",
+                    self.id,
+                    self.state
+                );
+                return false;
+            }
+        };
+
+        log::debug!(
+            "[{}] download_next called. download_current len = {}. current state = {:?}",
+            self.id,
+            self.download_current.len(),
+            self.state
+        );
+
+        if self.download_current.is_empty() {
+            log::debug!(
+                "[{:?}] Node is ready to download! Download queue len: {}",
+                self.id,
+                download_queue.len()
+            );
+            let count_to_download = min(MAX_DOWNLOADING_BLOCKS, download_queue.len());
+
+            if count_to_download == 0 {
+                log::debug!("[{}] Download queue is empty", self.id);
+                return false;
+            }
+
+            for _ in 0..count_to_download {
+                self.download_current
+                    .push(download_queue.pop_front().unwrap());
+            }
+
+            log::debug!(
+                "[{}] To download ({}): {:?}, queue size: {}",
+                self.id,
+                self.download_current.len(),
+                self.download_current,
+                download_queue.len()
+            );
+
+            // Send message
+            self.send(NodeCommand::SendMessage(message::MessageType::GetData(
+                message::Message::new(
+                    message::MAGIC_MAIN,
+                    message::getdata::MessageGetData::new(
+                        self.download_current
+                            .iter()
+                            .map(|elt| InvVect {
+                                hash_type: MSG_BLOCK,
+                                hash: *elt,
+                            })
+                            .collect(),
+                    ),
+                ),
+            )));
+            log::debug!(
+                "[{}] Current download len: {}",
+                self.id,
+                self.download_current.len()
+            );
+        } else {
+            log::warn!("[{}] Already downloading", self.id,);
+        }
+        true
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum NodeState {
     CONNECTING(ConnectionState),
     UPDATING_PEERS,
@@ -63,6 +164,8 @@ pub struct NodeResponse {
 pub enum NodeResponseContent {
     Connected,
     Addrs(Vec<network::NetAddr>),
+    Headers(Vec<block::BlockHeader>),
+    Block(block::Block),
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -231,6 +334,15 @@ impl Node {
                 mess.command.handle(self)
             }
             message::MessageType::Headers(mess) => {
+                // display_message(&self.node_id, &mess.command);
+                log::debug!(
+                    "[{}] Received {} message",
+                    self.node_id,
+                    std::str::from_utf8(&mess.command.name()).unwrap(),
+                );
+                mess.command.handle(self)
+            }
+            message::MessageType::Block(mess) => {
                 display_message(&self.node_id, &mess.command);
                 mess.command.handle(self)
             }

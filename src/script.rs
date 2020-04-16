@@ -404,6 +404,7 @@ impl Script {
 mod tests {
 
     use super::*;
+    use crate::utils;
 
     fn get_script_parameters(code: Vec<u8>) -> (Box<Transaction>, usize, Box<TxOutput>) {
         let mut tx_new = Box::new(Transaction::new());
@@ -605,16 +606,14 @@ mod tests {
 
         let scriptsig = hex::decode("493046022100c352d3dd993a981beba4a63ad15c209275ca9470abfcd57da93b58e4eb5dce82022100840792bc1f456062819f15d33ee7055cf7b5ee1af1ebcc6028d9cdb1c3af7748014104f46db5e9d61a9dc27b8d64ad23e7383a4e6ca164593c2527c038c0857eb67ee8e825dca65046b82c9331586c82e0fd1f633f25f87c161bc6f8a630121df2b3d3").unwrap();
 
-        let mut hash = [0 as u8; 32];
-        for (i, byte) in
-            hex::decode("87a157f3fd88ac7907c05fc55e271dc4acdc5605d187d646604ca8c0e9382e03")
-                .unwrap()
-                .iter()
-                .enumerate()
-        {
-            hash[31 - i] = *byte;
-        }
-        tx_new.add_input(hash, 0, scriptsig);
+        tx_new.add_input(
+            utils::clone_into_array(
+                &hex::decode("87a157f3fd88ac7907c05fc55e271dc4acdc5605d187d646604ca8c0e9382e03")
+                    .unwrap(),
+            ),
+            0,
+            scriptsig,
+        );
         tx_new.add_output(
             556_000_000,
             hex::decode("76a914c398efa9c392ba6013c5e04ee729755ef7f58b3288ac").unwrap(),
@@ -654,21 +653,25 @@ mod tests {
     fn test_checksig_2() {
         let mut tx_new = Box::new(Transaction::new());
 
-        let mut hash = crypto::bytes_to_hash32(
-            &hex::decode("41b02a6333272b9c5df83603ac91d0710730aee5bbdeeef4f95afc39018053db")
-                .unwrap(),
-        )
-        .unwrap();
         let scriptsig = hex::decode("4830450220443e88089b0685c3b24ef78c28fd65dc98e7c473edbfa7e2324912252f0dd677022100e4d1b9f84c0e034d8dc0a556b2136b0257078e68e86d6313faad0ea95049f97001").unwrap();
-        tx_new.add_input(hash, 0, scriptsig);
+        tx_new.add_input(
+            utils::clone_into_array(
+                &hex::decode("41b02a6333272b9c5df83603ac91d0710730aee5bbdeeef4f95afc39018053db")
+                    .unwrap(),
+            ),
+            0,
+            scriptsig,
+        );
 
-        let mut hash = crypto::bytes_to_hash32(
-            &hex::decode("6a7d09bf1629bc5147e5adbcb6fac39de6616d2a281c905ae04b528ae95e416d")
-                .unwrap(),
-        )
-        .unwrap();
         let scriptsig = hex::decode("483045022100d11686794cb7998dfdcdc46114b52d887bb37cc7830ee1208893759026b83c0002206bd00a793cf5b20d8d9d71a2d690ce882dc97a89010cb0b3b758b44944872cb401").unwrap();
-        tx_new.add_input(hash, 0, scriptsig);
+        tx_new.add_input(
+            utils::clone_into_array(
+                &hex::decode("6a7d09bf1629bc5147e5adbcb6fac39de6616d2a281c905ae04b528ae95e416d")
+                    .unwrap(),
+            ),
+            0,
+            scriptsig,
+        );
 
         tx_new.add_output(
             10_000_000_000,
@@ -723,11 +726,10 @@ mod tests {
         let mut tx_new = Box::new(Transaction::new());
 
         tx_new.add_input(
-            crypto::bytes_to_hash32(
+            utils::clone_into_array(
                 &hex::decode("9c08a4d78931342b37fd5f72900fb9983087e6f46c4a097d8a1f52c74e28eaf6")
                     .unwrap(),
-            )
-            .unwrap(),
+            ),
             1,
             hex::decode(
                 "255121029b6d2c97b8b7c718c325d7be3ac30f7c9d67651bce0c929f55ee77ce58efcf8451ae",
@@ -761,11 +763,10 @@ mod tests {
         let mut tx_new = Box::new(Transaction::new());
 
         tx_new.add_input(
-            crypto::bytes_to_hash32(
+            utils::clone_into_array(
                 &hex::decode("9c08a4d78931342b37fd5f72900fb9983087e6f46c4a097d8a1f52c74e28eaf6")
                     .unwrap(),
-            )
-            .unwrap(),
+            ),
             1,
             hex::decode(
                 "255121029b6d2c97b8b7c718c325d7be3ac30f7c9d67651bce0c929f55ee77ce58efcf8451ae",
@@ -795,11 +796,10 @@ mod tests {
         let mut tx_new = Box::new(Transaction::new());
 
         tx_new.add_input(
-            crypto::bytes_to_hash32(
+            utils::clone_into_array(
                 &hex::decode("40eee3ae1760e3a8532263678cdf64569e6ad06abc133af64f735e52562bccc8")
                     .unwrap(),
-            )
-            .unwrap(),
+            ),
             0,
             hex::decode(
                 "00483045022100ad0851c69dd756b45190b5a8e97cb4ac3c2b0fa2f2aae23aed6ca97ab33bf88302200b248593abc1259512793e7dea61036c601775ebb23640a0120b0dba2c34b79001455141042f90074d7a5bf30c72cf3a8dfd1381bdbd30407010e878f3a11269d5f74a58788505cdca22ea6eab7cfb40dc0e07aba200424ab0d79122a653ad0c7ec9896bdf51ae",

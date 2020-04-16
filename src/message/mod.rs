@@ -4,6 +4,7 @@ use crate::utils;
 
 pub mod addr;
 pub mod alert;
+pub mod block;
 pub mod feefilter;
 pub mod getaddr;
 pub mod getblocks;
@@ -47,6 +48,7 @@ pub enum MessageType {
     GetBlocks(Message<getblocks::MessageGetBlocks>),
     NotFound(Message<notfound::MessageNotFound>),
     Headers(Message<headers::MessageHeaders>),
+    Block(Message<block::MessageBlock>),
 }
 
 impl MessageType {
@@ -67,6 +69,7 @@ impl MessageType {
             MessageType::GetBlocks(message) => message.bytes(),
             MessageType::NotFound(message) => message.bytes(),
             MessageType::Headers(message) => message.bytes(),
+            MessageType::Block(message) => message.bytes(),
         }
     }
 }
@@ -237,6 +240,9 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     } else if name == "headers" {
         let command = headers::MessageHeaders::from_bytes(&payload);
         message = MessageType::Headers(Message { magic, command });
+    } else if name == "block" {
+        let command = block::MessageBlock::from_bytes(&payload);
+        message = MessageType::Block(Message { magic, command });
     } else {
         return Err(ParseError::UnknownMessage(name.clone()));
     }
