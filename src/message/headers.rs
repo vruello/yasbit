@@ -1,4 +1,5 @@
 use crate::block;
+use crate::config;
 use crate::message;
 use crate::message::MessageCommand;
 use crate::node;
@@ -72,7 +73,7 @@ impl message::MessageCommand for MessageHeaders {
         Self { headers }
     }
 
-    fn handle(&self, node: &mut node::Node) {
+    fn handle(&self, node: &mut node::Node, config: &config::Config) {
         node.send_response(node::NodeResponseContent::Headers(
             self.headers.iter().map(|x| x.header.clone()).collect(),
         ))
@@ -110,7 +111,8 @@ mod tests {
     /// This test is based on the genesis block
     /// https://www.blockchain.com/fr/btc/block/000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
     fn test_message_headers_genesis() {
-        let block = block::genesis_block();
+        let config = config::main_config();
+        let block = config.genesis_block;
         let headers = vec![MessageBlockHeader {
             header: block.header.clone(),
             txn_count: 0,

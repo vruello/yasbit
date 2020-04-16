@@ -195,24 +195,26 @@ impl Hashable for BlockHeader {
     }
 }
 
-pub fn genesis_block() -> Block {
+pub fn genesis_block(version: u32, time: u32, nonce: u32, bits: u32, reward: u64) -> Block {
     let mut tx = Transaction::new();
+
     // Coinbase generation input
     tx.add_input(
         [0 as u8; 32],
         0xffffffff,
         hex::decode("04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73").unwrap());
-    // Output 50 BTC
+
+    // Output reward
     tx.add_output(
-        5_000_000_000,
+        reward,
         hex::decode("4104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac").unwrap());
 
     Block::new(
-        1,
-        [0; 32],    // prev block
-        1231006505, // time
-        2083236893, // nonce
-        486604799,  // bits
+        version,
+        [0; 32], // prev block
+        time,    // time
+        nonce,   // nonce
+        bits,    // bits
         Box::new(tx),
     )
 }
@@ -221,12 +223,14 @@ pub fn genesis_block() -> Block {
 mod tests {
 
     use super::*;
+    use crate::config;
 
     #[test]
     /// The test is based on
     /// https://www.blockchain.com/fr/btc/block/000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
     fn genesis_block_hash() {
-        let block = genesis_block();
+        let config = config::main_config();
+        let block = config.genesis_block;
         assert_eq!(
             "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
             hex::encode(block.hash())

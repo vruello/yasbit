@@ -1,3 +1,4 @@
+use crate::config;
 extern crate hex;
 
 use std::sync::mpsc;

@@ -1,3 +1,4 @@
+use crate::config;
 extern crate hex;
 
 use crate::crypto;
@@ -38,7 +39,7 @@ impl message::MessageCommand for MessageGetData {
         }
     }
 
-    fn handle(&self, node: &mut node::Node) {
+    fn handle(&self, node: &mut node::Node, config: &config::Config) {
         for inv_vect in self.base.inventory.iter() {
             log::trace!(
                 "{} {}",

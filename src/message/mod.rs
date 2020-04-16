@@ -1,3 +1,4 @@
+use crate::config;
 use crate::crypto;
 use crate::node;
 use crate::utils;
@@ -79,7 +80,7 @@ pub trait MessageCommand {
     fn from_bytes(_: &[u8]) -> Self;
     fn length(&self) -> u32;
     fn name(&self) -> [u8; 12];
-    fn handle(&self, node: &mut node::Node);
+    fn handle(&self, node: &mut node::Node, config: &config::Config);
 }
 
 #[derive(Debug, PartialEq)]
@@ -145,7 +146,7 @@ pub fn parse(bytes: &[u8]) -> Result<(MessageType, usize), ParseError> {
     index += next_size;
 
     // Check magic
-    if !(magic == MAGIC_MAIN || magic == MAGIC_TESTNET) {
+    if !(magic == MAGIC_MAIN || magic == MAGIC_TESTNET || magic == MAGIC_TESTNET3) {
         return Err(ParseError::InvalidMagicBytes);
     }
 
@@ -283,7 +284,7 @@ mod tests {
             }
         }
 
-        fn handle(&self, node: &mut node::Node) {}
+        fn handle(&self, node: &mut node::Node, config: &config::Config) {}
     }
 
     impl MessageMock {

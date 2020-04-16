@@ -1,3 +1,4 @@
+use crate::config;
 use crate::message;
 use crate::message::MessageCommand;
 use crate::node;
@@ -29,7 +30,7 @@ impl message::MessageCommand for MessageVerack {
         MessageVerack {}
     }
 
-    fn handle(&self, node: &mut node::Node) {
+    fn handle(&self, node: &mut node::Node, config: &config::Config) {
         let new_state = match node.connection_state() {
             node::ConnectionState::VER_SENT => node::ConnectionState::VERACK_RECEIVED,
             node::ConnectionState::VER_RECEIVED => {

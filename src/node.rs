@@ -1,4 +1,5 @@
 use crate::block;
+use crate::config::Config;
 use crate::crypto;
 use crate::message;
 use crate::message::inv_base::{InvVect, MSG_BLOCK};
@@ -69,7 +70,11 @@ impl NodeHandle {
         }
     }
 
-    pub fn download_next(&mut self, download_queue: &mut VecDeque<crypto::Hash32>) -> bool {
+    pub fn download_next(
+        &mut self,
+        config: &Config,
+        download_queue: &mut VecDeque<crypto::Hash32>,
+    ) -> bool {
         match &self.state {
             UPDATING_BLOCKS => (),
             _ => {
@@ -118,7 +123,7 @@ impl NodeHandle {
             // Send message
             self.send(NodeCommand::SendMessage(message::MessageType::GetData(
                 message::Message::new(
-                    message::MAGIC_MAIN,
+                    config.magic,
                     message::getdata::MessageGetData::new(
                         self.download_current
                             .iter()
@@ -215,7 +220,7 @@ impl Node {
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, config: &Config) {
         // Init connection by sending version message
         let my_addr: net::Ipv4Addr = "0.0.0.0".parse().unwrap();
         let node_addr: net::Ipv6Addr = match self.stream.peer_addr().unwrap() {
@@ -244,7 +249,7 @@ impl Node {
             self.node_id,
             version
         );
-        let message = message::Message::new(message::MAGIC_MAIN, version);
+        let message = message::Message::new(config.magic, version);
         self.stream.write(&message.bytes()).unwrap();
         self.stream.flush().unwrap();
 
@@ -256,7 +261,7 @@ impl Node {
         loop {
             match self.writer_receiver.recv().unwrap() {
                 CommandOrMessageType::MessageType(message_type) => {
-                    self.handle_message(message_type);
+                    self.handle_message(config, message_type);
                 }
                 CommandOrMessageType::Command(node_command) => {
                     self.handle_command(node_command);
@@ -275,63 +280,63 @@ impl Node {
         }
     }
 
-    pub fn handle_message(&mut self, message_type: message::MessageType) {
+    pub fn handle_message(&mut self, config: &Config, message_type: message::MessageType) {
         match message_type {
             message::MessageType::Alert(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::Version(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::Verack(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::GetAddr(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::Addr(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::Ping(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::Pong(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::GetHeaders(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::FeeFilter(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::SendHeaders(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::Inv(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::GetBlocks(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::GetData(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::NotFound(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::Headers(mess) => {
                 // display_message(&self.node_id, &mess.command);
@@ -340,11 +345,11 @@ impl Node {
                     self.node_id,
                     std::str::from_utf8(&mess.command.name()).unwrap(),
                 );
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
             message::MessageType::Block(mess) => {
                 display_message(&self.node_id, &mess.command);
-                mess.command.handle(self)
+                mess.command.handle(self, config)
             }
         }
     }

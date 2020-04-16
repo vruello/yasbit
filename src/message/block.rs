@@ -1,4 +1,5 @@
 use crate::block;
+use crate::config;
 use crate::crypto::Hashable;
 use crate::message;
 use crate::message::MessageCommand;
@@ -35,7 +36,7 @@ impl message::MessageCommand for MessageBlock {
         }
     }
 
-    fn handle(&self, node: &mut node::Node) {
+    fn handle(&self, node: &mut node::Node, config: &config::Config) {
         log::debug!("[{:?}] Received block {:?}", node.id(), self.block.hash());
         node.send_response(node::NodeResponseContent::Block(self.block.clone()))
             .unwrap();
@@ -54,7 +55,8 @@ mod tests {
 
     #[test]
     fn test_message_block() {
-        let block = block::genesis_block();
+        let config = config::main_config();
+        let block = config.genesis_block;
         let message_block = MessageBlock::new(block.clone());
 
         assert_eq!(

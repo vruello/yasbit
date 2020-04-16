@@ -1,3 +1,4 @@
+use crate::config;
 use crate::message;
 use crate::message::MessageCommand;
 use crate::network;
@@ -54,7 +55,7 @@ impl message::MessageCommand for MessageAddr {
         MessageAddr { addr_list }
     }
 
-    fn handle(&self, node: &mut node::Node) {
+    fn handle(&self, node: &mut node::Node, config: &config::Config) {
         node.send_response(node::NodeResponseContent::Addrs(self.addr_list.clone()))
             .unwrap();
     }

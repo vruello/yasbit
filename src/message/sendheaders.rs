@@ -1,3 +1,4 @@
+use crate::config;
 use crate::message;
 use crate::message::MessageCommand;
 use crate::node;
@@ -29,7 +30,7 @@ impl message::MessageCommand for MessageSendHeaders {
         MessageSendHeaders {}
     }
 
-    fn handle(&self, node: &mut node::Node) {}
+    fn handle(&self, node: &mut node::Node, config: &config::Config) {}
 }
 
 impl MessageSendHeaders {

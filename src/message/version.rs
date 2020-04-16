@@ -1,3 +1,4 @@
+use crate::config;
 use std::io::Write;
 
 use crate::message;
@@ -118,11 +119,11 @@ impl message::MessageCommand for MessageVersion {
         }
     }
 
-    fn handle(&self, node: &mut node::Node) {
+    fn handle(&self, node: &mut node::Node, config: &config::Config) {
         // TODO: Verify validity of this message before sending ack
         let verack = message::verack::MessageVerack::new();
         log::debug!("[{}] Sending verak message: {:?}", node.id(), verack);
-        let message = message::Message::new(message::MAGIC_MAIN, verack);
+        let message = message::Message::new(config.magic, verack);
         let stream = node.stream();
         stream.write(&message.bytes()).unwrap();
         stream.flush().unwrap();

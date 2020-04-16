@@ -1,6 +1,7 @@
 extern crate hex;
 extern crate rand;
 mod block;
+mod config;
 mod crypto;
 mod merkle_tree;
 mod message;
@@ -32,6 +33,8 @@ struct GlobalState {
 }
 
 pub fn run() {
+    let config = config::test_config();
+
     // Initialize DBs
     let mut storage = Arc::new(storage::Storage::new(
         "/var/tmp/yasbit/blocks.db",
@@ -40,7 +43,19 @@ pub fn run() {
     ));
 
     // Load peers
-    let mut addrs = lookup_host("seed.bitcoin.sipa.be").unwrap();
+    let mut addrs = Vec::new();
+    for seed in &config.dns_seeds {
+        log::debug!("Resolve {}", seed);
+        match lookup_host(&seed) {
+            Ok(ips) => {
+                if !ips.is_empty() {
+                    addrs = ips;
+                    break;
+                }
+            }
+            _ => (),
+        }
+    }
     addrs.truncate(PEERS_NUMBER);
 
     log::info!("Peers: {:?}", addrs);
@@ -61,13 +76,15 @@ pub fn run() {
             .nodes
             .push(node::NodeHandle::new(node_id, command_sender));
         let node_response_sender = response_sender.clone();
-        let node_sock_addr = net::SocketAddr::new(*addr, 8333);
+        let node_sock_addr = net::SocketAddr::new(*addr, config.port);
+        let node_config = config.clone();
         thread::spawn(move || {
             start_node(
                 node_id,
                 node_sock_addr,
                 command_receiver,
                 node_response_sender,
+                node_config,
             )
         });
     }
@@ -97,7 +114,7 @@ pub fn run() {
                 if let node::NodeState::CONNECTING(_) = node_handle.state() {
                     node_handle.send(node::NodeCommand::SendMessage(
                         message::MessageType::GetAddr(message::Message::new(
-                            message::MAGIC_MAIN,
+                            config.magic,
                             message::getaddr::MessageGetAddr::new(),
                         )),
                     ));
@@ -118,17 +135,17 @@ pub fn run() {
                         log::info!("Node {} becomes the sync node", response.node_id);
                         node_handle.send(node::NodeCommand::SendMessage(
                             message::MessageType::GetHeaders(message::Message::new(
-                                message::MAGIC_MAIN,
+                                config.magic,
                                 message::getheaders::MessageGetHeaders::new(
                                     70013,
-                                    vec![block::genesis_block().hash()], // TODO
+                                    vec![config.genesis_block.hash()], // TODO
                                     [0; 32], // Get at most headers as possible
                                 ),
                             )),
                         ));
                     } else {
                         // Node is not the sync node. Try to download
-                        node_handle.download_next(&mut state.download_queue);
+                        node_handle.download_next(&config, &mut state.download_queue);
                     }
                 } else {
                     log::warn!("Unexpected Addrs message");
@@ -180,7 +197,7 @@ pub fn run() {
                     state.nodes.clone() // FIXME Find a way to avoid cloning here...
                 };
                 for node in download_nodes.iter_mut() {
-                    node.download_next(&mut state.download_queue);
+                    node.download_next(&config, &mut state.download_queue);
                 }
 
                 if headers.len() == MAX_HEADERS {
@@ -190,7 +207,7 @@ pub fn run() {
                         get_node_handle(&mut state.nodes, &state.sync_node_id.unwrap()).unwrap();
                     sync_node.send(node::NodeCommand::SendMessage(
                         message::MessageType::GetHeaders(message::Message::new(
-                            message::MAGIC_MAIN,
+                            config.magic,
                             message::getheaders::MessageGetHeaders::new(
                                 70013,
                                 vec![last_hash],
@@ -208,7 +225,7 @@ pub fn run() {
                 valider_sender
                     .send(valider::Message::Validate(block))
                     .unwrap();
-                node_handle.download_next(&mut state.download_queue);
+                node_handle.download_next(&config, &mut state.download_queue);
             }
             _ => log::warn!("Unknown message from thread"),
         };
@@ -230,6 +247,7 @@ fn start_node(
     socket_addr: net::SocketAddr,
     command_receiver: mpsc::Receiver<node::NodeCommand>,
     response_sender: mpsc::Sender<node::NodeResponse>,
+    config: config::Config,
 ) {
     log::debug!(
         "[{}] Trying to connect to {}:{}",
@@ -247,5 +265,5 @@ fn start_node(
     );
 
     let mut node = node::Node::new(node_id, stream, command_receiver, response_sender);
-    node.run();
+    node.run(&config);
 }

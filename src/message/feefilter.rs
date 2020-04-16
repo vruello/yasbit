@@ -1,3 +1,4 @@
+use crate::config;
 use crate::message;
 use crate::message::MessageCommand;
 use crate::node;
@@ -33,7 +34,7 @@ impl message::MessageCommand for MessageFeeFilter {
         MessageFeeFilter { feerate }
     }
 
-    fn handle(&self, node: &mut node::Node) {}
+    fn handle(&self, node: &mut node::Node, config: &config::Config) {}
 }
 
 impl MessageFeeFilter {

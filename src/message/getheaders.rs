@@ -1,3 +1,4 @@
+use crate::config;
 use crate::crypto;
 use crate::message;
 use crate::message::MessageCommand;
@@ -75,7 +76,7 @@ impl message::MessageCommand for MessageGetHeaders {
         }
     }
 
-    fn handle(&self, node: &mut node::Node) {}
+    fn handle(&self, node: &mut node::Node, config: &config::Config) {}
 }
 
 impl MessageGetHeaders {

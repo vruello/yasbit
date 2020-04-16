@@ -1,3 +1,4 @@
+use crate::config;
 use std::io::Write;
 
 use crate::message;
@@ -35,10 +36,10 @@ impl message::MessageCommand for MessagePing {
         MessagePing { nonce }
     }
 
-    fn handle(&self, node: &mut node::Node) {
+    fn handle(&self, node: &mut node::Node, config: &config::Config) {
         let pong = message::pong::MessagePong::new(self.nonce);
         log::debug!("[{}] Sending pong message: {:?}", node.id(), pong);
-        let message = message::Message::new(message::MAGIC_MAIN, pong);
+        let message = message::Message::new(config.magic, pong);
         let stream = node.stream();
         stream.write(&message.bytes()).unwrap();
         stream.flush().unwrap();
