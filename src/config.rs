@@ -1,4 +1,5 @@
 use crate::block::{genesis_block, Block};
+use rand::seq::SliceRandom;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -9,6 +10,19 @@ pub struct Config {
 }
 
 pub fn main_config() -> Config {
+    let mut dns_seeds = vec![
+        "seed.bitcoin.sipa.be".to_string(),
+        "dnsseed.bluematt.me".to_string(),
+        "dnsseed.bitcoin.dashjr.org".to_string(),
+        "seed.bitcoinstats.com".to_string(),
+        "seed.bitcoin.jonasschnelli.ch".to_string(),
+        "seed.btc.petertodd.org".to_string(),
+        "seed.bitcoin.sprovoost.nl".to_string(),
+        "nsseed.emzy.de".to_string(),
+    ];
+    let mut rng = rand::thread_rng();
+    dns_seeds.shuffle(&mut rng);
+
     Config {
         genesis_block: genesis_block(
             1,             // version
@@ -18,21 +32,20 @@ pub fn main_config() -> Config {
             5_000_000_000, // reward
         ),
         magic: 0xD9B4BEF9,
-        dns_seeds: vec![
-            "seed.bitcoin.sipa.be".to_string(),
-            "dnsseed.bluematt.me".to_string(),
-            "dnsseed.bitcoin.dashjr.org".to_string(),
-            "seed.bitcoinstats.com".to_string(),
-            "seed.bitcoin.jonasschnelli.ch".to_string(),
-            "seed.btc.petertodd.org".to_string(),
-            "seed.bitcoin.sprovoost.nl".to_string(),
-            "nsseed.emzy.de".to_string(),
-        ],
+        dns_seeds,
         port: 8333,
     }
 }
 
 pub fn test_config() -> Config {
+    let mut dns_seeds = vec![
+        "testnet-seed.bitcoin.jonasschnelli.ch".to_string(),
+        "seed.tbtc.petertodd.org".to_string(),
+        "seed.testnet.bitcoin.sprovoost.nl".to_string(),
+        "testnet-seed.bluematt.me".to_string(),
+    ];
+    let mut rng = rand::thread_rng();
+    dns_seeds.shuffle(&mut rng);
     Config {
         genesis_block: genesis_block(
             1,             // version
@@ -42,12 +55,7 @@ pub fn test_config() -> Config {
             5_000_000_000, // reward
         ),
         magic: 0x0709110B,
-        dns_seeds: vec![
-            "testnet-seed.bitcoin.jonasschnelli.ch".to_string(),
-            "seed.tbtc.petertodd.org".to_string(),
-            "seed.testnet.bitcoin.sprovoost.nl".to_string(),
-            "testnet-seed.bluematt.me".to_string(),
-        ],
+        dns_seeds,
         port: 18333,
     }
 }
