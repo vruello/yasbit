@@ -76,12 +76,12 @@ impl NodeHandle {
         download_queue: &mut VecDeque<crypto::Hash32>,
     ) -> bool {
         match &self.state {
-            UPDATING_BLOCKS => (),
+            NodeState::UPDATING_BLOCKS => {}
             _ => {
                 log::warn!(
                     "[{}] Not ready to download. Current state is {:?}",
                     self.id,
-                    self.state
+                    &self.state
                 );
                 return false;
             }

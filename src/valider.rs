@@ -50,7 +50,7 @@ pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
         log::debug!("Next block to validate is {:?}", next);
 
         if !available.contains_key(&next) {
-            log::debug!("Block {:?} is not yet available.", next);
+            log::info!("Waiting for block {:?}.", next);
             // Launch timeout
             let sender_timeout = sender.clone();
             let sender_hash = next.clone();
@@ -77,7 +77,7 @@ pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
                             );
                         }
                         Message::Validate(block) => {
-                            log::debug!("Block {:?} is available", block.hash());
+                            log::info!("Block {:?} is available", block.hash());
                             available.insert(block.hash(), block);
                             break; // Tests again if now the block is available
                         }
@@ -89,6 +89,7 @@ pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
                                     hash
                                 );
                                 // TODO
+                                panic!("Failed to retreive a block");
                             }
                         }
                     }
@@ -97,11 +98,10 @@ pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
         }
 
         // next is available
-        log::debug!("Validate {:?}", next);
+        log::info!("Validate {:?}", next);
         let block = available.remove(&next).unwrap();
-        // Validate block
 
-        log::debug!("Validate block {:?}", block);
+        // Validate block
         // TODO
     }
 }
