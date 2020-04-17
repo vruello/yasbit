@@ -66,7 +66,11 @@ impl NodeHandle {
                 log::debug!("[{}] Found {:?} at index {}", self.id, &block.hash(), index);
                 self.download_current.swap_remove(index);
             }
-            None => log::warn!("[{}] Block {:?} was not asked", self.id, block.hash()),
+            None => log::warn!(
+                "[{}] Block {} was not asked",
+                self.id,
+                hex::encode(block.hash())
+            ),
         }
     }
 
@@ -78,7 +82,7 @@ impl NodeHandle {
         match &self.state {
             NodeState::UPDATING_BLOCKS => {}
             _ => {
-                log::warn!(
+                log::debug!(
                     "[{}] Not ready to download. Current state is {:?}",
                     self.id,
                     &self.state
@@ -112,11 +116,17 @@ impl NodeHandle {
                     .push(download_queue.pop_front().unwrap());
             }
 
-            log::debug!(
-                "[{}] To download ({}): {:?}, queue size: {}",
+            let download_current_str: Vec<String> = self
+                .download_current
+                .iter()
+                .map(|elt| hex::encode(elt))
+                .collect();
+
+            log::info!(
+                "[{}] Ask {} blocks: {:?}, queue size: {}",
                 self.id,
                 self.download_current.len(),
-                self.download_current,
+                download_current_str,
                 download_queue.len()
             );
 
@@ -141,7 +151,7 @@ impl NodeHandle {
                 self.download_current.len()
             );
         } else {
-            log::warn!("[{}] Already downloading", self.id,);
+            log::debug!("[{}] Already downloading", self.id,);
         }
         true
     }

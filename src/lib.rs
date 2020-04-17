@@ -145,6 +145,7 @@ pub fn run() {
                         ));
                     } else {
                         // Node is not the sync node. Try to download
+                        log::info!("Node {} becomes a download node", response.node_id);
                         node_handle.download_next(&config, &mut state.download_queue);
                     }
                 } else {

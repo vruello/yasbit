@@ -47,10 +47,10 @@ pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
     // This never ends
     loop {
         let next = waiting.pop_front().unwrap();
-        log::debug!("Next block to validate is {:?}", next);
+        log::info!("Next block to validate is {}", hex::encode(next));
 
         if !available.contains_key(&next) {
-            log::info!("Waiting for block {:?}.", next);
+            log::info!("Waiting for block {}.", hex::encode(next));
             // Launch timeout
             let sender_timeout = sender.clone();
             let sender_hash = next.clone();
@@ -77,7 +77,7 @@ pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
                             );
                         }
                         Message::Validate(block) => {
-                            log::info!("Block {:?} is available", block.hash());
+                            log::info!("Block {} is available", hex::encode(block.hash()));
                             available.insert(block.hash(), block);
                             break; // Tests again if now the block is available
                         }
@@ -85,8 +85,8 @@ pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
                             log::debug!("Timeout for block {:?}", hash);
                             if hash == next {
                                 log::error!(
-                                    "Could not retrieve block {:?}. Ask another node...",
-                                    hash
+                                    "Could not retrieve block {}. Ask another node...",
+                                    hex::encode(hash)
                                 );
                                 // TODO
                                 panic!("Failed to retreive a block");
@@ -98,7 +98,7 @@ pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
         }
 
         // next is available
-        log::info!("Validate {:?}", next);
+        log::info!("Validate {}", hex::encode(next));
         let block = available.remove(&next).unwrap();
 
         // Validate block
