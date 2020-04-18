@@ -15,7 +15,7 @@ pub const MSG_BLOCK: u32 = 2;
 pub const MSG_FILTERED_BLOCK: u32 = 3;
 pub const MSG_CMPCT_BLOCK: u32 = 4;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct InvVect {
     pub hash_type: u32,
     pub hash: crypto::Hash32,
@@ -36,7 +36,7 @@ pub fn hash_type_to_str(hash_type: u32) -> &'static str {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessageInvBase {
     pub inventory: Vec<InvVect>,
 }

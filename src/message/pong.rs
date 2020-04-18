@@ -6,7 +6,7 @@ use crate::utils;
 
 const NAME: &str = "pong";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessagePong {
     nonce: u64,
 }

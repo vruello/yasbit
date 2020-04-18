@@ -5,7 +5,7 @@ use crate::node;
 
 const NAME: &str = "sendheaders";
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct MessageSendHeaders {}
 
 impl message::MessageCommand for MessageSendHeaders {

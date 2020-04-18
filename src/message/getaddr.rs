@@ -5,7 +5,7 @@ use crate::node;
 
 const NAME: &str = "getaddr";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessageGetAddr {
     // No payload
 }

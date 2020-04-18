@@ -7,12 +7,12 @@ use crate::variable_integer::VariableInteger;
 
 const NAME: &str = "headers";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessageHeaders {
     headers: Vec<MessageBlockHeader>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessageBlockHeader {
     header: block::BlockHeader,
     txn_count: u64,

@@ -25,7 +25,7 @@ static SIGNING_KEY: &'static str =
 
 const NAME: &str = "alert";
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct MessageAlert {
     version: u32,     // Alert format version
     relay_until: u64, // Timestamp beyond which nodes should stop relaying the alert

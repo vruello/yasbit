@@ -8,7 +8,7 @@ use crate::variable_integer::VariableInteger;
 
 const NAME: &str = "addr";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessageAddr {
     addr_list: Vec<network::NetAddr>,
 }

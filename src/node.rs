@@ -6,6 +6,7 @@ use crate::message::inv_base::{InvVect, MSG_BLOCK};
 use crate::message::MessageCommand;
 use crate::network;
 use crate::rand::RngCore;
+use crate::ControllerMessage;
 
 use crate::crypto::Hashable;
 use std::cmp::min;
@@ -39,8 +40,21 @@ impl NodeHandle {
         }
     }
 
-    pub fn send(&self, command: NodeCommand) {
-        self.command_sender.send(command).unwrap();
+    pub fn download_current_pop(&mut self) -> Option<crypto::Hash32> {
+        self.download_current.pop()
+    }
+
+    pub fn reset(&mut self, command_sender: mpsc::Sender<NodeCommand>) {
+        self.state = NodeState::CONNECTING(ConnectionState::CLOSED);
+        self.download_current = Vec::new();
+        self.command_sender = command_sender;
+    }
+
+    pub fn send(
+        &self,
+        command: NodeCommand,
+    ) -> std::result::Result<(), std::sync::mpsc::SendError<NodeCommand>> {
+        self.command_sender.send(command)
     }
 
     pub fn state(&self) -> &NodeState {
@@ -54,6 +68,13 @@ impl NodeHandle {
 
     pub fn id(&self) -> NodeId {
         self.id
+    }
+
+    pub fn is_downloading(&self, hash: &crypto::Hash32) -> bool {
+        if let Some(_) = self.download_current.iter().find(|&&x| x == *hash) {
+            return true;
+        }
+        false
     }
 
     pub fn mark_downloaded(&mut self, block: &block::Block) {
@@ -164,9 +185,11 @@ pub enum NodeState {
     UPDATING_BLOCKS,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum NodeCommand {
     SendMessage(message::MessageType),
+    Kill,
+    ConnectionClosed,
 }
 
 #[derive(Debug)]
@@ -181,6 +204,7 @@ pub enum NodeResponseContent {
     Addrs(Vec<network::NetAddr>),
     Headers(Vec<block::BlockHeader>),
     Block(block::Block),
+    ConnectionClosed,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -202,7 +226,7 @@ pub struct Node {
     stream: net::TcpStream,
     state: ConnectionState,
     writer_receiver: mpsc::Receiver<CommandOrMessageType>,
-    response_sender: mpsc::Sender<NodeResponse>,
+    response_sender: mpsc::Sender<ControllerMessage>,
 }
 
 impl Node {
@@ -210,7 +234,7 @@ impl Node {
         node_id: usize,
         stream: net::TcpStream,
         command_receiver: mpsc::Receiver<NodeCommand>,
-        response_sender: mpsc::Sender<NodeResponse>,
+        response_sender: mpsc::Sender<ControllerMessage>,
     ) -> Self {
         let input_stream = stream.try_clone().unwrap();
 
@@ -269,28 +293,43 @@ impl Node {
         // It reads from reader and command and eventually send messages
         // to the peer
         loop {
-            match self.writer_receiver.recv().unwrap() {
+            let should_break = match self.writer_receiver.recv().unwrap() {
                 CommandOrMessageType::MessageType(message_type) => {
-                    self.handle_message(config, message_type);
+                    self.handle_message(config, message_type)
                 }
-                CommandOrMessageType::Command(node_command) => {
-                    self.handle_command(node_command);
-                }
+                CommandOrMessageType::Command(node_command) => self.handle_command(node_command),
+            };
+            if should_break {
+                log::info!("[{}]: Terminate thread", self.node_id);
+                break;
             }
         }
     }
 
-    pub fn handle_command(&mut self, node_command: NodeCommand) {
+    pub fn handle_command(&mut self, node_command: NodeCommand) -> bool {
         match node_command {
             NodeCommand::SendMessage(message) => {
                 log::debug!("[{}] Send message: {:?}", self.node_id, &message);
                 self.stream.write(&message.bytes()).unwrap();
                 self.stream.flush().unwrap();
+                false
+            }
+            NodeCommand::Kill => {
+                // Close TCP stream
+                self.stream.shutdown(net::Shutdown::Both).unwrap();
+                true
+            }
+            NodeCommand::ConnectionClosed => {
+                log::warn!("[{}] Connection lost with peer", self.node_id);
+                // Send a notification to the main controller
+                self.send_response(NodeResponseContent::ConnectionClosed)
+                    .unwrap();
+                false
             }
         }
     }
 
-    pub fn handle_message(&mut self, config: &Config, message_type: message::MessageType) {
+    pub fn handle_message(&mut self, config: &Config, message_type: message::MessageType) -> bool {
         match message_type {
             message::MessageType::Alert(mess) => {
                 display_message(&self.node_id, &mess.command);
@@ -361,7 +400,8 @@ impl Node {
                 display_message(&self.node_id, &mess.command);
                 mess.command.handle(self, config)
             }
-        }
+        };
+        false
     }
 
     pub fn id(&self) -> &NodeId {
@@ -383,11 +423,12 @@ impl Node {
     pub fn send_response(
         &mut self,
         content: NodeResponseContent,
-    ) -> Result<(), mpsc::SendError<NodeResponse>> {
-        self.response_sender.send(NodeResponse {
-            node_id: self.node_id,
-            content,
-        })
+    ) -> Result<(), mpsc::SendError<ControllerMessage>> {
+        self.response_sender
+            .send(ControllerMessage::NodeResponse(NodeResponse {
+                node_id: self.node_id,
+                content,
+            }))
     }
 }
 
@@ -398,8 +439,12 @@ fn command(
     loop {
         let command = command_receiver.recv().unwrap();
         command_writer_sender
-            .send(CommandOrMessageType::Command(command))
+            .send(CommandOrMessageType::Command(command.clone()))
             .unwrap();
+
+        if let NodeCommand::Kill = command {
+            break;
+        }
     }
 }
 
@@ -410,7 +455,10 @@ fn reader(mut stream: net::TcpStream, t_rc: mpsc::Sender<CommandOrMessageType>) 
     loop {
         let received_bytes = stream.read(&mut buffer).unwrap();
         if received_bytes == 0 {
-            log::info!("Remote {:?} closed connection", stream.peer_addr().unwrap());
+            log::warn!("Remote {:?} closed connection", stream.peer_addr().unwrap());
+            // Send a notification to the controller so that it can
+            t_rc.send(CommandOrMessageType::Command(NodeCommand::ConnectionClosed))
+                .unwrap();
             break;
         }
         let mut index = 0;

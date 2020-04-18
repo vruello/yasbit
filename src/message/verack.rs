@@ -5,7 +5,7 @@ use crate::node;
 
 const NAME: &str = "verack";
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct MessageVerack {}
 
 impl message::MessageCommand for MessageVerack {

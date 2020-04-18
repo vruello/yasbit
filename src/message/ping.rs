@@ -8,7 +8,7 @@ use crate::utils;
 
 const NAME: &str = "ping";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessagePing {
     nonce: u64,
 }

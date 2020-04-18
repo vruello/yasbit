@@ -14,7 +14,7 @@ pub const NET_ADDR_SIZE: usize = NET_ADDR_VERSION_SIZE + 4;
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct NetAddr {
     time: u32,
-    net_addr_version: NetAddrVersion,
+    pub net_addr_version: NetAddrVersion,
 }
 
 impl NetAddrBase for NetAddr {
@@ -49,8 +49,8 @@ impl NetAddr {
 #[derive(PartialEq, Debug, Clone, Eq, Hash)]
 pub struct NetAddrVersion {
     services: u64,
-    ip: net::Ipv6Addr,
-    port: u16,
+    pub ip: net::Ipv6Addr,
+    pub port: u16,
 }
 
 impl NetAddrBase for NetAddrVersion {

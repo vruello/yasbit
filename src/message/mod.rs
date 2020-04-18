@@ -32,7 +32,7 @@ pub const NODE_BLOOM: u64 = 4;
 pub const NODE_WITNESS: u64 = 8;
 pub const NODE_NETWORK_LIMITED: u64 = 1024;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MessageType {
     Version(Message<version::MessageVersion>),
     Alert(Message<alert::MessageAlert>),
@@ -83,7 +83,7 @@ pub trait MessageCommand {
     fn handle(&self, node: &mut node::Node, config: &config::Config);
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Message<T: MessageCommand> {
     magic: u32, // Magic value indicating message origin network, and used to
     // seek to next message when stream state is unknown

@@ -1,6 +1,7 @@
 use crate::block;
 use crate::crypto;
 use crate::crypto::Hashable;
+use crate::ControllerMessage;
 use std::collections::{HashMap, VecDeque};
 use std::sync::mpsc;
 use std::thread;
@@ -12,6 +13,11 @@ pub enum Message {
     Timeout(crypto::Hash32),
 }
 
+pub enum ValiderMessage {
+    Timeout(crypto::Hash32),
+    Store(crypto::Hash32, block::Block),
+}
+
 pub fn timeout(sender: mpsc::Sender<Message>, hash: crypto::Hash32) {
     log::debug!("timeout launched for hash {:?}", hash);
     thread::sleep(time::Duration::from_secs(2));
@@ -19,7 +25,11 @@ pub fn timeout(sender: mpsc::Sender<Message>, hash: crypto::Hash32) {
     sender.send(Message::Timeout(hash)).unwrap();
 }
 
-pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
+pub fn run(
+    sender: mpsc::Sender<Message>,
+    receiver: mpsc::Receiver<Message>,
+    controller_sender: mpsc::Sender<ControllerMessage>,
+) {
     let mut available: HashMap<crypto::Hash32, block::Block> = HashMap::new();
     let mut waiting = VecDeque::new();
 
@@ -88,8 +98,13 @@ pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
                                     "Could not retrieve block {}. Ask another node...",
                                     hex::encode(hash)
                                 );
-                                // TODO
-                                panic!("Failed to retreive a block");
+                                controller_sender.send(ControllerMessage::ValiderResponse(
+                                    ValiderMessage::Timeout(hash),
+                                ));
+                                // Relaunch timeout
+                                let sender_timeout = sender.clone();
+                                let sender_hash = hash.clone();
+                                thread::spawn(move || timeout(sender_timeout, sender_hash));
                             }
                         }
                     }
@@ -103,5 +118,8 @@ pub fn run(sender: mpsc::Sender<Message>, receiver: mpsc::Receiver<Message>) {
 
         // Validate block
         // TODO
+        controller_sender.send(ControllerMessage::ValiderResponse(ValiderMessage::Store(
+            next, block,
+        )));
     }
 }

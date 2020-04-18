@@ -8,7 +8,7 @@ use crate::variable_integer::VariableInteger;
 
 const NAME: &str = "getheaders";
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct MessageGetHeaders {
     version: u32,
     block_locator_hashes: Vec<crypto::Hash32>,

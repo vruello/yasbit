@@ -6,7 +6,7 @@ use crate::utils;
 
 const NAME: &str = "feefilter";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessageFeeFilter {
     feerate: u64,
 }

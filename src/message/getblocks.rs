@@ -8,7 +8,7 @@ use crate::variable_integer::VariableInteger;
 
 const NAME: &str = "getblocks";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessageGetBlocks {
     // the protocol version
     version: u32,

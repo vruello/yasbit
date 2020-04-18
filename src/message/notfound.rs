@@ -11,7 +11,7 @@ use crate::variable_integer::VariableInteger;
 
 const NAME: &str = "notfound";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessageNotFound {
     base: MessageInvBase,
 }

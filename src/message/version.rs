@@ -11,7 +11,7 @@ use crate::variable_integer::VariableInteger;
 
 const NAME: &str = "version";
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct MessageVersion {
     version: u32,                       // Identifies protocol version being used by the node
     services: u64,                      // bitfield of features to be enabled for this connection

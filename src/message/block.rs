@@ -8,7 +8,7 @@ use std::convert::TryInto;
 
 const NAME: &str = "block";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct MessageBlock {
     block: block::Block,
 }
