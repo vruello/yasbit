@@ -3,18 +3,19 @@ use crate::merkle_tree;
 use crate::transaction::Transaction;
 use crate::utils;
 use crate::variable_integer::VariableInteger;
+use serde::{Deserialize, Serialize};
 
 /// A block is represented here
 /// See https://en.bitcoin.it/wiki/Block
 #[derive(Debug, PartialEq, Clone)]
 pub struct Block {
     pub header: BlockHeader,
-    transactions: Vec<Box<Transaction>>,
+    pub transactions: Vec<Box<Transaction>>,
 }
 
 /// A block header is represented here
 /// See https://en.bitcoin.it/wiki/Block_hashing_algorithm
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct BlockHeader {
     version: u32,             // block version number
     hash_prev_block: Hash32,  // hash of previous block header

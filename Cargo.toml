@@ -12,3 +12,5 @@ dns-lookup = ""
 log = ""
 simple_logger = ""
 rocksdb = ""
+serde = { version = "1.0", features = ["derive"] }
+bincode = ""

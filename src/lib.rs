@@ -61,11 +61,30 @@ pub fn run() {
     let config = config::test_config();
 
     // Initialize DBs
-    let mut storage = Arc::new(storage::Storage::new(
+    let mut storage = storage::Storage::new(
         "/var/tmp/yasbit/blocks.db",
         "/var/tmp/yasbit/transactions.db",
         "/var/tmp/yasbit/chain.db",
-    ));
+        "/var/tmp/yasbit/blocks/",
+    );
+
+    match storage.has_block(config.genesis_block.hash()) {
+        Ok(true) => log::info!(
+            "Genesis block {} already exists.",
+            hex::encode(config.genesis_block.hash())
+        ),
+        Ok(false) => {
+            storage.store_block(&config.genesis_block).unwrap();
+            log::info!(
+                "Genesis block {} not found.",
+                hex::encode(config.genesis_block.hash())
+            );
+        }
+        Err(err) => {
+            log::error!("Storage error: {:?}.", err);
+            return;
+        }
+    }
 
     let addrs = get_peers_from_dns(&config, PEERS_NUMBER);
 
@@ -104,6 +123,7 @@ pub fn run() {
     let valider_controller_sender = controller_sender.clone();
     thread::spawn(move || {
         valider::run(
+            storage,
             valider_sender_timeout.clone(),
             valider_receiver,
             valider_controller_sender,
@@ -236,9 +256,6 @@ fn handle_valider_message(
                 }
             };
             node_restart_with_new_peer(state, config, controller_sender, node_handle.id());
-        }
-        valider::ValiderMessage::Store(hash, block) => {
-            log::debug!("STORE block {}", hex::encode(hash));
         }
     }
 }

@@ -1,9 +1,11 @@
 use crate::block;
 use crate::crypto;
 use crate::crypto::Hashable;
+use crate::storage::Storage;
 use crate::ControllerMessage;
 use std::collections::{HashMap, VecDeque};
 use std::sync::mpsc;
+use std::sync::Arc;
 use std::thread;
 use std::time;
 
@@ -15,7 +17,6 @@ pub enum Message {
 
 pub enum ValiderMessage {
     Timeout(crypto::Hash32),
-    Store(crypto::Hash32, block::Block),
 }
 
 pub fn timeout(sender: mpsc::Sender<Message>, hash: crypto::Hash32) {
@@ -26,6 +27,7 @@ pub fn timeout(sender: mpsc::Sender<Message>, hash: crypto::Hash32) {
 }
 
 pub fn run(
+    mut storage: Storage,
     sender: mpsc::Sender<Message>,
     receiver: mpsc::Receiver<Message>,
     controller_sender: mpsc::Sender<ControllerMessage>,
@@ -117,9 +119,14 @@ pub fn run(
         let block = available.remove(&next).unwrap();
 
         // Validate block
-        // TODO
-        controller_sender.send(ControllerMessage::ValiderResponse(ValiderMessage::Store(
-            next, block,
-        )));
+
+        // Store block
+        if let Err(err) = storage.store_block(&block) {
+            log::warn!(
+                "Error occurred while storing block {}: {:?}",
+                hex::encode(block.hash()),
+                err
+            );
+        }
     }
 }
